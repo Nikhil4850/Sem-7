@@ -14,9 +14,14 @@ import os
 torch.serialization.add_safe_globals([DetectionModel])
 
 _DIR       = os.path.dirname(os.path.abspath(__file__))
-_CUSTOM_PT = os.path.join(_DIR, "phone_model2", "weights", "best.pt")
+_CUSTOM_PT = os.path.join(_DIR, "phone_best", "weights", "best.pt")
+if not os.path.exists(_CUSTOM_PT):
+    _CUSTOM_PT = os.path.join(_DIR, "phone_model2", "weights", "best.pt")
 if not os.path.exists(_CUSTOM_PT):
     _CUSTOM_PT = os.path.join(_DIR, "phone_model", "weights", "best.pt")
+
+DEVICE = 0 if torch.cuda.is_available() else "cpu"
+USE_HALF = torch.cuda.is_available()
 
 
 def _model_is_sane(pt_path):
@@ -24,7 +29,7 @@ def _model_is_sane(pt_path):
     try:
         m = YOLO(pt_path)
         blank = np.zeros((360, 480, 3), dtype=np.uint8)
-        res = m(blank, verbose=False)
+        res = m(blank, device=DEVICE, half=USE_HALF, verbose=False)
         for r in res:
             for box in r.boxes:
                 if float(box.conf[0]) > 0.55 and int(box.cls[0]) == 0:
@@ -54,7 +59,7 @@ def detect_phone(frame):
     INPUT  : BGR numpy frame
     OUTPUT : phone_detected (bool), annotated frame
     """
-    results = model(frame, verbose=False)
+    results = model(frame, device=DEVICE, half=USE_HALF, verbose=False)
     phone_detected = False
 
     for result in results:

@@ -1,11 +1,7 @@
-"""
-Retrain YOLOv8 phone detector with augmentation + more epochs.
-Output: ai-proctor/ml-service/phone_best/weights/best.pt
-"""
-
 import os, yaml
 from pathlib import Path
 from ultralytics import YOLO
+import torch
 
 ROOT    = Path(__file__).parent.parent
 DATASET = ROOT / "datasets" / "Mobile phone detection.v2i.yolov8"
@@ -23,18 +19,32 @@ with open(fixed_yaml, "w") as f:
         "names": ["Mobile-phone"],
     }, f)
 
-model = YOLO("yolov8s.pt")   # use 'small' — better than nano for accuracy
+# Dynamic device & performance configuration
+has_cuda = torch.cuda.is_available()
+device = 0 if has_cuda else "cpu"
+workers = 4 if has_cuda else 0
+batch_size = 32 if has_cuda else 32
+img_size = 640 if has_cuda else 320
+
+if not has_cuda:
+    torch.set_num_threads(8)
+
+print(f"🚀 Training Config: device={device} | CUDA={has_cuda} | batch={batch_size} | imgsz={img_size}")
+
+model = YOLO("yolov8n.pt")   # use nano model for maximum training & inference speed
 
 model.train(
     data     = str(fixed_yaml),
-    epochs   = 60,
-    imgsz    = 640,
-    batch    = 8,
+    epochs   = 25,
+    imgsz    = img_size,
+    batch    = batch_size,
     name     = "phone_best",
     project  = str(Path(__file__).parent),
-    patience = 15,
-    device   = "cpu",
-    workers  = 0,
+    patience = 8,
+    device   = device,
+    workers  = workers,
+    amp      = True,       # Mixed precision for maximum speed
+    cache    = "ram",      # Cache images in RAM to eliminate disk bottleneck
     # Augmentation
     hsv_h    = 0.015,
     hsv_s    = 0.7,
@@ -51,3 +61,4 @@ model.train(
 
 best = Path(__file__).parent / "phone_best" / "weights" / "best.pt"
 print(f"\nDone. Best model: {best}")
+

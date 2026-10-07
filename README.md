@@ -107,7 +107,7 @@ ai-proctor/
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/Shrinetsingh9648/ai-proctor.git
+git clone https://github.com/Nikhil4850/Sem-7.git
 cd ai-proctor
 ```
 
