@@ -1148,7 +1148,7 @@ import base64
 import numpy as np
 import sys
 import os
-import asyncpg
+import aiosqlite
 import bcrypt as _bcrypt
 from datetime import datetime, timedelta
 from typing import Optional
@@ -1172,16 +1172,11 @@ from scorer          import SuspicionScorer
 SECRET_KEY  = "your-secret-key-change-in-production"
 ALGORITHM   = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
-
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
-# ── Database config ───────────────────────────────────────────────
+# ── SQLite DB path ────────────────────────────────────────────────
+DB_PATH = os.path.join(os.path.dirname(__file__), "proctor.db")
 
-
-DATABASE_URL = os.environ.get(
-    "DATABASE_URL",
-    "postgresql://postgres:shrinetsingh%409648@localhost:5432/proctor_db"
-)
 # ── Pydantic models ───────────────────────────────────────────────
 class Token(BaseModel):
     access_token: str
@@ -1213,29 +1208,83 @@ app = FastAPI(title="AI Proctor — Full System")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000",
-                   "https://ai-proctor.vercel.app"],
+    allow_origins=["http://localhost:3000", "https://ai-proctor.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-db_pool = None
+# ── DB helpers ────────────────────────────────────────────────────
+async def get_db():
+    return await aiosqlite.connect(DB_PATH)
+
+async def init_db():
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.executescript("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'student'
+        );
+        CREATE TABLE IF NOT EXISTS session_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT,
+            event TEXT,
+            suspicion_score INTEGER,
+            timestamp TEXT DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS questions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            subject TEXT,
+            question_text TEXT,
+            option_a TEXT,
+            option_b TEXT,
+            option_c TEXT,
+            option_d TEXT,
+            correct_answer TEXT,
+            difficulty TEXT DEFAULT 'medium',
+            created_by TEXT,
+            created_at TEXT DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS exam_sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            student_id TEXT,
+            question_ids TEXT,
+            answers TEXT,
+            score INTEGER,
+            total_questions INTEGER,
+            status TEXT DEFAULT 'active',
+            started_at TEXT DEFAULT (datetime('now')),
+            submitted_at TEXT
+        );
+        """)
+        await db.commit()
 
 @app.on_event("startup")
 async def startup():
-    global db_pool
-    try:
-        db_pool = await asyncpg.create_pool(DATABASE_URL)
-        print("Database connected successfully")
-    except Exception as e:
-        print(f"Database connection failed: {e}")
-        db_pool = None
+    await init_db()
+    # Seed demo users if they don't exist
+    async with aiosqlite.connect(DB_PATH) as db:
+        for uname, pwd, role in [("admin","admin123","admin"),("student1","admin123","student")]:
+            cur = await db.execute("SELECT id FROM users WHERE username=?", (uname,))
+            if not await cur.fetchone():
+                hashed = _bcrypt.hashpw(pwd.encode(), _bcrypt.gensalt()).decode()
+                await db.execute(
+                    "INSERT INTO users (username,password_hash,role) VALUES (?,?,?)",
+                    (uname, hashed, role)
+                )
+        await db.commit()
+    print(f"SQLite DB ready: {DB_PATH}")
 
 @app.on_event("shutdown")
 async def shutdown():
-    if db_pool:
-        await db_pool.close()
+    pass
+
+# ── Health check ──────────────────────────────────────────────────
+@app.get("/")
+async def root():
+    return {"status": "AI Proctor backend running", "database": "sqlite", "version": "1.0.0"}
 
 # ── Auth helpers ──────────────────────────────────────────────────
 def verify_password(plain, hashed):
@@ -1248,10 +1297,11 @@ def create_access_token(data: dict):
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 async def get_user(username: str):
-    async with db_pool.acquire() as conn:
-        return await conn.fetchrow(
-            "SELECT * FROM users WHERE username=$1", username
-        )
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cur = await db.execute("SELECT * FROM users WHERE username=?", (username,))
+        row = await cur.fetchone()
+        return dict(row) if row else None
 
 async def get_current_user(token: str = Depends(oauth2_scheme)):
     try:
@@ -1264,35 +1314,30 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     user = await get_user(username)
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
-    return dict(user)
+    return user
 
 # ── Auth endpoints ────────────────────────────────────────────────
 @app.post("/login", response_model=Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     user = await get_user(form_data.username)
     if not user or not verify_password(form_data.password, user["password_hash"]):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="Incorrect username or password")
     token = create_access_token({"sub": user["username"], "role": user["role"]})
-    return {
-        "access_token": token,
-        "token_type":   "bearer",
-        "role":         user["role"],
-        "username":     user["username"],
-    }
+    return {"access_token": token, "token_type": "bearer",
+            "role": user["role"], "username": user["username"]}
 
 @app.post("/register")
 async def register(user: UserCreate):
     hashed = _bcrypt.hashpw(user.password.encode(), _bcrypt.gensalt()).decode()
     try:
-        async with db_pool.acquire() as conn:
-            await conn.execute(
-                "INSERT INTO users (username, password_hash, role) VALUES ($1, $2, $3)",
-                user.username, hashed, user.role
+        async with aiosqlite.connect(DB_PATH) as db:
+            await db.execute(
+                "INSERT INTO users (username,password_hash,role) VALUES (?,?,?)",
+                (user.username, hashed, user.role)
             )
-        return {"message": f"User {user.username} created successfully"}
+            await db.commit()
+        return {"message": f"User {user.username} created"}
     except Exception:
         raise HTTPException(status_code=400, detail="Username already exists")
 
@@ -1302,14 +1347,13 @@ async def get_me(current_user=Depends(get_current_user)):
 
 # ── Logs endpoints ────────────────────────────────────────────────
 async def save_log(user_id: str, event: str, score: int):
-    if not db_pool:
-        return
     try:
-        async with db_pool.acquire() as conn:
-            await conn.execute(
-                "INSERT INTO session_logs (user_id, event, suspicion_score) VALUES ($1, $2, $3)",
-                user_id, event, score
+        async with aiosqlite.connect(DB_PATH) as db:
+            await db.execute(
+                "INSERT INTO session_logs (user_id,event,suspicion_score) VALUES (?,?,?)",
+                (user_id, event, score)
             )
+            await db.commit()
     except Exception as e:
         print(f"DB write error: {e}")
 
@@ -1317,196 +1361,202 @@ async def save_log(user_id: str, event: str, score: int):
 async def get_logs(current_user=Depends(get_current_user)):
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
-    async with db_pool.acquire() as conn:
-        rows = await conn.fetch(
-            "SELECT * FROM session_logs ORDER BY timestamp DESC LIMIT 100"
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cur = await db.execute(
+            "SELECT * FROM session_logs ORDER BY timestamp DESC LIMIT 200"
         )
+        rows = await cur.fetchall()
     return [dict(r) for r in rows]
 
 @app.get("/my-logs")
 async def get_my_logs(current_user=Depends(get_current_user)):
-    async with db_pool.acquire() as conn:
-        rows = await conn.fetch(
-            "SELECT * FROM session_logs WHERE user_id=$1 ORDER BY timestamp DESC",
-            current_user["username"]
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cur = await db.execute(
+            "SELECT * FROM session_logs WHERE user_id=? ORDER BY timestamp DESC",
+            (current_user["username"],)
         )
+        rows = await cur.fetchall()
     return [dict(r) for r in rows]
 
 # ── Question Bank endpoints ───────────────────────────────────────
 @app.get("/questions")
 async def get_questions(current_user=Depends(get_current_user)):
-    async with db_pool.acquire() as conn:
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
         if current_user["role"] == "admin":
-            rows = await conn.fetch(
-                "SELECT * FROM questions ORDER BY created_at DESC"
-            )
+            cur = await db.execute("SELECT * FROM questions ORDER BY created_at DESC")
         else:
-            rows = await conn.fetch(
-                "SELECT * FROM questions ORDER BY RANDOM() LIMIT 10"
-            )
+            cur = await db.execute("SELECT * FROM questions ORDER BY RANDOM() LIMIT 10")
+        rows = await cur.fetchall()
     return [dict(r) for r in rows]
 
 @app.post("/questions")
-async def create_question(
-    question: QuestionCreate,
-    current_user=Depends(get_current_user)
-):
+async def create_question(question: QuestionCreate, current_user=Depends(get_current_user)):
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
-    async with db_pool.acquire() as conn:
-        row = await conn.fetchrow(
+    async with aiosqlite.connect(DB_PATH) as db:
+        cur = await db.execute(
             """INSERT INTO questions
-               (subject, question_text, option_a, option_b, option_c, option_d,
-                correct_answer, difficulty, created_by)
-               VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-               RETURNING *""",
-            question.subject, question.question_text,
-            question.option_a, question.option_b,
-            question.option_c, question.option_d,
-            question.correct_answer.upper(),
-            question.difficulty, current_user["username"]
+               (subject,question_text,option_a,option_b,option_c,option_d,
+                correct_answer,difficulty,created_by)
+               VALUES (?,?,?,?,?,?,?,?,?)""",
+            (question.subject, question.question_text,
+             question.option_a, question.option_b,
+             question.option_c, question.option_d,
+             question.correct_answer.upper(), question.difficulty,
+             current_user["username"])
         )
+        await db.commit()
+        db.row_factory = aiosqlite.Row
+        row = await (await db.execute("SELECT * FROM questions WHERE id=?", (cur.lastrowid,))).fetchone()
     return dict(row)
 
 @app.put("/questions/{question_id}")
-async def update_question(
-    question_id: int,
-    question: QuestionCreate,
-    current_user=Depends(get_current_user)
-):
+async def update_question(question_id: int, question: QuestionCreate,
+                          current_user=Depends(get_current_user)):
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
-    async with db_pool.acquire() as conn:
-        row = await conn.fetchrow(
-            """UPDATE questions SET
-               subject=$1, question_text=$2,
-               option_a=$3, option_b=$4,
-               option_c=$5, option_d=$6,
-               correct_answer=$7, difficulty=$8
-               WHERE id=$9 RETURNING *""",
-            question.subject, question.question_text,
-            question.option_a, question.option_b,
-            question.option_c, question.option_d,
-            question.correct_answer.upper(),
-            question.difficulty, question_id
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            """UPDATE questions SET subject=?,question_text=?,
+               option_a=?,option_b=?,option_c=?,option_d=?,
+               correct_answer=?,difficulty=? WHERE id=?""",
+            (question.subject, question.question_text,
+             question.option_a, question.option_b,
+             question.option_c, question.option_d,
+             question.correct_answer.upper(), question.difficulty, question_id)
         )
+        await db.commit()
+        db.row_factory = aiosqlite.Row
+        row = await (await db.execute("SELECT * FROM questions WHERE id=?", (question_id,))).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Question not found")
     return dict(row)
 
 @app.delete("/questions/{question_id}")
-async def delete_question(
-    question_id: int,
-    current_user=Depends(get_current_user)
-):
+async def delete_question(question_id: int, current_user=Depends(get_current_user)):
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
-    async with db_pool.acquire() as conn:
-        await conn.execute(
-            "DELETE FROM questions WHERE id=$1", question_id
-        )
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("DELETE FROM questions WHERE id=?", (question_id,))
+        await db.commit()
     return {"message": "Question deleted"}
 
 @app.post("/exam/start")
 async def start_exam(current_user=Depends(get_current_user)):
-    async with db_pool.acquire() as conn:
-        existing = await conn.fetchrow(
-            "SELECT * FROM exam_sessions WHERE student_id=$1 AND status='active'",
-            current_user["username"]
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        # Check for existing active session
+        cur = await db.execute(
+            "SELECT * FROM exam_sessions WHERE student_id=? AND status='active'",
+            (current_user["username"],)
         )
+        existing = await cur.fetchone()
         if existing:
-            return dict(existing)
-        questions = await conn.fetch(
-            "SELECT id FROM questions ORDER BY RANDOM() LIMIT 10"
+            s = dict(existing)
+            s["question_ids"] = json.loads(s["question_ids"] or "[]")
+            return s
+        # Get 10 random questions
+        cur = await db.execute("SELECT id FROM questions ORDER BY RANDOM() LIMIT 10")
+        qrows = await cur.fetchall()
+        question_ids = [r["id"] for r in qrows]
+        cur2 = await db.execute(
+            """INSERT INTO exam_sessions (student_id,question_ids,total_questions,status)
+               VALUES (?,?,?,'active')""",
+            (current_user["username"], json.dumps(question_ids), len(question_ids))
         )
-        question_ids = [q["id"] for q in questions]
-        session = await conn.fetchrow(
-            """INSERT INTO exam_sessions
-               (student_id, question_ids, total_questions)
-               VALUES ($1, $2, $3) RETURNING *""",
-            current_user["username"],
-            question_ids,
-            len(question_ids)
-        )
-    return dict(session)
+        await db.commit()
+        cur3 = await db.execute("SELECT * FROM exam_sessions WHERE id=?", (cur2.lastrowid,))
+        row = await cur3.fetchone()
+    s = dict(row)
+    s["question_ids"] = json.loads(s["question_ids"] or "[]")
+    return s
 
 @app.get("/exam/questions/{session_id}")
-async def get_exam_questions(
-    session_id: int,
-    current_user=Depends(get_current_user)
-):
-    async with db_pool.acquire() as conn:
-        session = await conn.fetchrow(
-            "SELECT * FROM exam_sessions WHERE id=$1 AND student_id=$2",
-            session_id, current_user["username"]
+async def get_exam_questions(session_id: int, current_user=Depends(get_current_user)):
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cur = await db.execute(
+            "SELECT * FROM exam_sessions WHERE id=? AND student_id=?",
+            (session_id, current_user["username"])
         )
-        if not session:
+        srow = await cur.fetchone()
+        if not srow:
             raise HTTPException(status_code=404, detail="Session not found")
-        questions = await conn.fetch(
-            """SELECT id, subject, question_text,
-                      option_a, option_b, option_c, option_d, difficulty
-               FROM questions WHERE id = ANY($1)""",
-            session["question_ids"]
+        session = dict(srow)
+        qids = json.loads(session["question_ids"] or "[]")
+        session["question_ids"] = qids
+        if not qids:
+            return {"session": session, "questions": []}
+        placeholders = ",".join("?" * len(qids))
+        cur2 = await db.execute(
+            f"""SELECT id,subject,question_text,option_a,option_b,option_c,option_d,difficulty
+                FROM questions WHERE id IN ({placeholders})""",
+            qids
         )
-    return {
-        "session": dict(session),
-        "questions": [dict(q) for q in questions]
-    }
+        qrows = await cur2.fetchall()
+    return {"session": session, "questions": [dict(q) for q in qrows]}
 
 @app.post("/exam/submit")
-async def submit_exam(
-    data: ExamSubmit,
-    current_user=Depends(get_current_user)
-):
-    async with db_pool.acquire() as conn:
-        session = await conn.fetchrow(
-            "SELECT * FROM exam_sessions WHERE id=$1 AND student_id=$2",
-            data.session_id, current_user["username"]
+async def submit_exam(data: ExamSubmit, current_user=Depends(get_current_user)):
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cur = await db.execute(
+            "SELECT * FROM exam_sessions WHERE id=? AND student_id=?",
+            (data.session_id, current_user["username"])
         )
-        if not session:
+        srow = await cur.fetchone()
+        if not srow:
             raise HTTPException(status_code=404, detail="Session not found")
+        session = dict(srow)
         if session["status"] == "submitted":
             raise HTTPException(status_code=400, detail="Already submitted")
-        questions = await conn.fetch(
-            "SELECT id, correct_answer FROM questions WHERE id = ANY($1)",
-            session["question_ids"]
+        qids = json.loads(session["question_ids"] or "[]")
+        placeholders = ",".join("?" * len(qids))
+        cur2 = await db.execute(
+            f"SELECT id,correct_answer FROM questions WHERE id IN ({placeholders})", qids
         )
-        score = 0
-        for q in questions:
-            student_answer = data.answers.get(str(q["id"]), "")
-            if student_answer.upper() == q["correct_answer"]:
-                score += 1
-        updated = await conn.fetchrow(
-            """UPDATE exam_sessions SET
-               answers=$1, score=$2, status='submitted',
-               submitted_at=NOW()
-               WHERE id=$3 RETURNING *""",
-            dict(data.answers), score, data.session_id
+        questions = await cur2.fetchall()
+        score = sum(
+            1 for q in questions
+            if data.answers.get(str(q["id"]), "").upper() == q["correct_answer"]
         )
+        await db.execute(
+            """UPDATE exam_sessions SET answers=?,score=?,status='submitted',
+               submitted_at=datetime('now') WHERE id=?""",
+            (json.dumps(data.answers), score, data.session_id)
+        )
+        await db.commit()
     return {
-        "score":      score,
-        "total":      session["total_questions"],
-        "percentage": round(score / session["total_questions"] * 100),
-        "status":     "submitted"
+        "score": score,
+        "total": session["total_questions"],
+        "percentage": round(score / max(session["total_questions"], 1) * 100),
+        "status": "submitted",
     }
 
 @app.get("/exam/results")
 async def get_all_results(current_user=Depends(get_current_user)):
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
-    async with db_pool.acquire() as conn:
-        rows = await conn.fetch(
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cur = await db.execute(
             "SELECT * FROM exam_sessions WHERE status='submitted' ORDER BY submitted_at DESC"
         )
+        rows = await cur.fetchall()
     return [dict(r) for r in rows]
 
 @app.get("/exam/my-result")
 async def get_my_result(current_user=Depends(get_current_user)):
-    async with db_pool.acquire() as conn:
-        row = await conn.fetchrow(
-            "SELECT * FROM exam_sessions WHERE student_id=$1 ORDER BY started_at DESC LIMIT 1",
-            current_user["username"]
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cur = await db.execute(
+            "SELECT * FROM exam_sessions WHERE student_id=? ORDER BY started_at DESC LIMIT 1",
+            (current_user["username"],)
         )
+        row = await cur.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="No exam found")
     return dict(row)
@@ -1518,7 +1568,6 @@ async def proctor_websocket(websocket: WebSocket):
 
     token    = websocket.query_params.get("token", "")
     username = "anonymous"
-
     try:
         payload  = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username = payload.get("sub", "anonymous")
@@ -1536,7 +1585,8 @@ async def proctor_websocket(websocket: WebSocket):
             try:
                 parsed = json.loads(raw)
                 if isinstance(parsed, dict) and parsed.get("type") == "tab_switch":
-                    await save_log(username, "tab_switch", 40)
+                    scorer.add_tab_switch()
+                    await save_log(username, "tab_switch", scorer.tab_switch_score)
                     await websocket.send_text(json.dumps({"tab_switch_logged": True}))
                     continue
             except Exception:
@@ -1545,7 +1595,6 @@ async def proctor_websocket(websocket: WebSocket):
             # Handle webcam frame
             if "," in raw:
                 raw = raw.split(",")[1]
-
             img_bytes = base64.b64decode(raw)
             np_arr    = np.frombuffer(img_bytes, dtype=np.uint8)
             frame     = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
@@ -1578,4 +1627,5 @@ async def proctor_websocket(websocket: WebSocket):
     except Exception as e:
         print(f"Error: {e}")
         await websocket.close()
+
 

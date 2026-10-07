@@ -1,42 +1,56 @@
 # ================================================================
 #  face_detection.py
-#  JOB: Count how many faces are visible in one webcam frame.
-#  CALLED BY: main.py
+#  YuNet DNN face detector (OpenCV 4.8+ / 5.x compatible via ONNX).
+#  Accurate at angles, multiple faces, and variable distances.
 # ================================================================
 
-import mediapipe as mp
 import cv2
+import numpy as np
+import os
+import urllib.request
 
-# --- Create the face detector ONCE (reusing it is faster) -------
-mp_face_detection = mp.solutions.face_detection
-mp_drawing        = mp.solutions.drawing_utils
+_DIR       = os.path.dirname(os.path.abspath(__file__))
+_MODEL_PATH = os.path.join(_DIR, "face_detection_yunet.onnx")
+_MODEL_URL  = (
+    "https://github.com/opencv/opencv_zoo/raw/main/models/"
+    "face_detection_yunet/face_detection_yunet_2023mar.onnx"
+)
 
-face_detector = mp_face_detection.FaceDetection(
-    model_selection=1,            # 1 = detects faces up to ~5 metres away
-    min_detection_confidence=0.5  # needs 50% confidence to count a face
+def _ensure_model():
+    if not os.path.exists(_MODEL_PATH):
+        print("[face_detection] Downloading YuNet ONNX model…")
+        urllib.request.urlretrieve(_MODEL_URL, _MODEL_PATH)
+        print("[face_detection] Done.")
+
+_ensure_model()
+
+# YuNet detector — works in OpenCV 4.8+ and OpenCV 5
+_detector = cv2.FaceDetectorYN.create(
+    _MODEL_PATH, "", (480, 360),
+    score_threshold=0.6,
+    nms_threshold=0.3,
+    top_k=5,
 )
 
 
 def count_faces(frame):
     """
-    INPUT  : frame  — one image from the webcam (numpy array, BGR format)
-    OUTPUT : face_count  — integer: 0, 1, 2, 3 ...
-             frame       — same image with coloured boxes drawn on each face
+    INPUT  : BGR frame (numpy array)
+    OUTPUT : face_count (int), annotated frame
     """
+    h, w = frame.shape[:2]
+    _detector.setInputSize((w, h))
+    _, faces = _detector.detect(frame)
 
-    # MediaPipe needs RGB, but OpenCV gives BGR — convert colour order
-    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-    # Run the AI detector
-    results = face_detector.process(rgb_frame)
-
-    face_count = 0  # default: no face found
-
-    if results.detections:                      # at least one face found
-        face_count = len(results.detections)    # count all faces
-
-        # Draw a box around each face (just so you can see it on screen)
-        for detection in results.detections:
-            mp_drawing.draw_detection(frame, detection)
+    face_count = 0
+    if faces is not None:
+        face_count = len(faces)
+        for face in faces:
+            x, y, fw, fh = int(face[0]), int(face[1]), int(face[2]), int(face[3])
+            conf = float(face[14])
+            x, y = max(0, x), max(0, y)
+            cv2.rectangle(frame, (x, y), (x+fw, y+fh), (0, 220, 0), 2)
+            cv2.putText(frame, f"{conf:.0%}", (x, max(y-6, 10)),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 220, 0), 1)
 
     return face_count, frame

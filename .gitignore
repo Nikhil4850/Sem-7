@@ -13,8 +13,27 @@ build/
 .idea/
 .vscode/
 
-# Models
+# Model binaries & weights
 yolov8n.pt
+yolov8s.pt
+*.caffemodel
+*.onnx
+*.yaml.cache
+lbfmodel.yaml
+face_detection_yunet.onnx
+deploy.prototxt
+res10_300x300_ssd_iter_140000.caffemodel
+ml-service/phone_model/
+ml-service/phone_model2/
+ml-service/phone_best/
+ml-service/phone_best2/
+datasets/
+
+# SQLite DB
+backend/proctor.db
 
 # Environment
 .env
+
+# Misc
+project 2/

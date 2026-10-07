@@ -1,70 +1,83 @@
 # ================================================================
 #  phone_detection.py
-#  JOB: Detect if a mobile phone is visible in the webcam frame.
-#  USES: YOLOv8 — pretrained on COCO dataset (80 object classes)
-#        "cell phone" is class index 67 in COCO.
-#  CALLED BY: main.py
+#  YOLOv8 phone detection. Uses custom-trained model if it passes
+#  a sanity check, else falls back to COCO yolov8n (class 67).
 # ================================================================
 
 from ultralytics import YOLO
-import cv2
-
-# ----------------------------------------------------------------
-# Load YOLOv8 model — yolov8n = "nano" (smallest + fastest).
-# First run: auto-downloads yolov8n.pt (~6MB) to your machine.
-# Subsequent runs: loads from cache instantly.
-# ----------------------------------------------------------------
-from ultralytics import YOLO
-import torch
-
-# Allow YOLO model class (safe because it's official)
 from ultralytics.nn.tasks import DetectionModel
+import torch
+import cv2
+import numpy as np
+import os
+
 torch.serialization.add_safe_globals([DetectionModel])
 
-model = YOLO("yolov8n.pt")
+_DIR       = os.path.dirname(os.path.abspath(__file__))
+_CUSTOM_PT = os.path.join(_DIR, "phone_model2", "weights", "best.pt")
+if not os.path.exists(_CUSTOM_PT):
+    _CUSTOM_PT = os.path.join(_DIR, "phone_model", "weights", "best.pt")
 
-# COCO dataset class index for "cell phone"
-PHONE_CLASS_ID = 67
 
-# Minimum confidence to count a detection (0.0 to 1.0)
-CONFIDENCE_THRESHOLD = 0.5
+def _model_is_sane(pt_path):
+    """Returns True if model doesn't fire on a blank black frame."""
+    try:
+        m = YOLO(pt_path)
+        blank = np.zeros((360, 480, 3), dtype=np.uint8)
+        res = m(blank, verbose=False)
+        for r in res:
+            for box in r.boxes:
+                if float(box.conf[0]) > 0.55 and int(box.cls[0]) == 0:
+                    return False   # fires on blank — overfit
+        return True
+    except Exception:
+        return False
+
+
+# Choose model
+if os.path.exists(_CUSTOM_PT) and _model_is_sane(_CUSTOM_PT):
+    _model_path          = _CUSTOM_PT
+    PHONE_CLASS_ID       = 0      # "Mobile-phone"
+    CONFIDENCE_THRESHOLD = 0.50
+    print(f"[phone] Custom model OK: {_model_path}")
+else:
+    _model_path          = "yolov8n.pt"
+    PHONE_CLASS_ID       = 67     # COCO "cell phone"
+    CONFIDENCE_THRESHOLD = 0.45
+    print("[phone] Using COCO yolov8n (custom model failed sanity check)")
+
+model = YOLO(_model_path)
 
 
 def detect_phone(frame):
     """
-    INPUT  : frame — one webcam image (numpy array, BGR)
-    OUTPUT : phone_detected — True or False
-             frame          — same image with box drawn if phone found
+    INPUT  : BGR numpy frame
+    OUTPUT : phone_detected (bool), annotated frame
     """
-
-    # Run YOLOv8 on the frame
-    # verbose=False stops YOLO printing to terminal every frame
     results = model(frame, verbose=False)
-
     phone_detected = False
 
     for result in results:
         for box in result.boxes:
+            class_id   = int(box.cls[0])
+            confidence = float(box.conf[0])
 
-            class_id   = int(box.cls[0])        # what object is this?
-            confidence = float(box.conf[0])     # how confident? (0 to 1)
+            if class_id != PHONE_CLASS_ID or confidence < CONFIDENCE_THRESHOLD:
+                continue
 
-            # Only care about phones with enough confidence
-            if class_id == PHONE_CLASS_ID and confidence >= CONFIDENCE_THRESHOLD:
-                phone_detected = True
+            # Extra check: box must be at least 2% of frame area (avoid dust)
+            x1, y1, x2, y2 = map(int, box.xyxy[0])
+            bw, bh = x2 - x1, y2 - y1
+            fh, fw = frame.shape[:2]
+            if bw * bh < 0.02 * fw * fh:
+                continue
 
-                # Get bounding box coordinates
-                x1, y1, x2, y2 = map(int, box.xyxy[0])
-
-                # Draw a red box around the phone
-                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
-
-                # Label above the box
-                label = f"PHONE {confidence:.0%}"
-                cv2.rectangle(frame, (x1, y1 - 22), (x1 + 130, y1), (0, 0, 255), -1)
-                cv2.putText(frame, label,
-                            (x1 + 4, y1 - 6),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.55,
-                            (255, 255, 255), 1)
+            phone_detected = True
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
+            label = f"PHONE {confidence:.0%}"
+            (lw, lh), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.55, 1)
+            cv2.rectangle(frame, (x1, y1-lh-8), (x1+lw+4, y1), (0, 0, 255), -1)
+            cv2.putText(frame, label, (x1+2, y1-4),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 1)
 
     return phone_detected, frame
