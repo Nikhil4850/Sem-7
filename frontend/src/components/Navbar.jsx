@@ -12,9 +12,12 @@ export default function Navbar({ view, onNavigate, user, onLogout, onOpenAuth, c
   ];
 
   const adminNavs = [
-    { key: 'dashboard', label: '📊 Dashboard' },
-    { key: 'questions', label: '📝 Question Bank' },
-    { key: 'results',   label: '🏆 Exam Results' },
+    { key: 'dashboard',    label: '📊 Logs' },
+    { key: 'live-monitor', label: '👁️ Live Monitor' },
+    { key: 'questions',    label: '📝 Questions' },
+    { key: 'exam-mgmt',    label: '🗓️ Exams' },
+    { key: 'results',      label: '🏆 Results' },
+    { key: 'settings',     label: '⚙️ Settings' },
   ];
 
   return (
@@ -24,7 +27,7 @@ export default function Navbar({ view, onNavigate, user, onLogout, onOpenAuth, c
           <span className="brand-icon">🛡️</span>
           <span className="brand-name">EduVanguard</span>
         </div>
-        <span className="brand-tag">AI Proctor Platform</span>
+        <span className="brand-tag">AI Proctor SaaS</span>
       </div>
 
       <div className="nav-center">
@@ -49,12 +52,20 @@ export default function Navbar({ view, onNavigate, user, onLogout, onOpenAuth, c
         ))}
 
         {user && user.role === 'student' && (
-          <button
-            className={`nav-link exam-link ${view === 'exam' ? 'active' : ''}`}
-            onClick={() => onNavigate('exam')}
-          >
-            ⚡ Live Exam
-          </button>
+          <>
+            <button
+              className={`nav-link ${view === 'student-dashboard' ? 'active' : ''}`}
+              onClick={() => onNavigate('student-dashboard')}
+            >
+              🎓 Portal
+            </button>
+            <button
+              className={`nav-link exam-link ${view === 'exam' ? 'active' : ''}`}
+              onClick={() => onNavigate('exam')}
+            >
+              ⚡ Live Exam
+            </button>
+          </>
         )}
       </div>
 

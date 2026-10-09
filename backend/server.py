@@ -1203,6 +1203,13 @@ class ExamSubmit(BaseModel):
     session_id: int
     answers:    dict
 
+class ExamCreate(BaseModel):
+    title: str
+    subject: str
+    duration_minutes: int = 45
+    total_questions: int = 10
+    passing_score: int = 60
+
 # ── FastAPI app ───────────────────────────────────────────────────
 app = FastAPI(title="AI Proctor — Full System")
 
@@ -1257,6 +1264,20 @@ async def init_db():
             status TEXT DEFAULT 'active',
             started_at TEXT DEFAULT (datetime('now')),
             submitted_at TEXT
+        );
+        CREATE TABLE IF NOT EXISTS exams (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            subject TEXT NOT NULL,
+            duration_minutes INTEGER DEFAULT 45,
+            total_questions INTEGER DEFAULT 10,
+            passing_score INTEGER DEFAULT 60,
+            is_active INTEGER DEFAULT 1,
+            created_at TEXT DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
         );
         """)
         await db.commit()
@@ -1379,6 +1400,50 @@ async def get_my_logs(current_user=Depends(get_current_user)):
         )
         rows = await cur.fetchall()
     return [dict(r) for r in rows]
+
+@app.get("/logs/export/csv")
+async def export_logs_csv(current_user=Depends(get_current_user)):
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    import io, csv
+    from fastapi.responses import Response
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cur = await db.execute("SELECT * FROM session_logs ORDER BY timestamp DESC")
+        rows = await cur.fetchall()
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["ID", "Student Username", "AI Violation Event", "Suspicion Score", "Timestamp"])
+    for r in rows:
+        writer.writerow([r["id"], r["user_id"], r["event"], r["suspicion_score"], r["timestamp"]])
+    return Response(
+        content=output.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=proctoring_logs.csv"}
+    )
+
+@app.get("/exam/results/export/csv")
+async def export_results_csv(current_user=Depends(get_current_user)):
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    import io, csv
+    from fastapi.responses import Response
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cur = await db.execute("SELECT * FROM exam_sessions WHERE status='submitted' ORDER BY submitted_at DESC")
+        rows = await cur.fetchall()
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Session ID", "Student Username", "Score", "Total Questions", "Percentage", "Status", "Started At", "Submitted At"])
+    for r in rows:
+        total = r["total_questions"] or 10
+        pct = round(r["score"] / max(total, 1) * 100)
+        writer.writerow([r["id"], r["student_id"], r["score"], total, f"{pct}%", r["status"], r["started_at"], r["submitted_at"]])
+    return Response(
+        content=output.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=exam_results.csv"}
+    )
 
 # ── Question Bank endpoints ───────────────────────────────────────
 @app.get("/questions")
@@ -1560,6 +1625,60 @@ async def get_my_result(current_user=Depends(get_current_user)):
     if not row:
         raise HTTPException(status_code=404, detail="No exam found")
     return dict(row)
+
+# ── Exam Management & Settings endpoints ────────────────────────────
+@app.get("/exams")
+async def get_exams(current_user=Depends(get_current_user)):
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cur = await db.execute("SELECT * FROM exams ORDER BY created_at DESC")
+        rows = await cur.fetchall()
+    return [dict(r) for r in rows]
+
+@app.post("/exams")
+async def create_exam(exam: ExamCreate, current_user=Depends(get_current_user)):
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    async with aiosqlite.connect(DB_PATH) as db:
+        cur = await db.execute(
+            """INSERT INTO exams (title, subject, duration_minutes, total_questions, passing_score)
+               VALUES (?, ?, ?, ?, ?)""",
+            (exam.title, exam.subject, exam.duration_minutes, exam.total_questions, exam.passing_score)
+        )
+        await db.commit()
+        db.row_factory = aiosqlite.Row
+        row = await (await db.execute("SELECT * FROM exams WHERE id=?", (cur.lastrowid,))).fetchone()
+    return dict(row)
+
+@app.delete("/exams/{exam_id}")
+async def delete_exam(exam_id: int, current_user=Depends(get_current_user)):
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("DELETE FROM exams WHERE id=?", (exam_id,))
+        await db.commit()
+    return {"message": "Exam deleted"}
+
+@app.get("/settings")
+async def get_settings(current_user=Depends(get_current_user)):
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cur = await db.execute("SELECT * FROM settings")
+        rows = await cur.fetchall()
+    return {r["key"]: r["value"] for r in rows}
+
+@app.post("/settings")
+async def update_settings(payload: dict, current_user=Depends(get_current_user)):
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    async with aiosqlite.connect(DB_PATH) as db:
+        for k, v in payload.items():
+            await db.execute(
+                "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
+                (str(k), str(v))
+            )
+        await db.commit()
+    return {"message": "Settings updated"}
 
 # ── WebSocket ─────────────────────────────────────────────────────
 @app.websocket("/ws/proctor")

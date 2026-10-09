@@ -10,9 +10,11 @@ const SAMPLE_DEMO_LOGS = [
 ];
 
 export default function AdminDashboard({ token }) {
-  const [logs, setLogs]       = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState(null);
+  const [logs, setLogs]             = useState([]);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterEvent, setFilterEvent] = useState('all');
 
   function fetchLogs() {
     setLoading(true);
@@ -29,7 +31,6 @@ export default function AdminDashboard({ token }) {
         setLoading(false);
       })
       .catch(() => {
-        // Offline / Demo Fallback Mode
         setLogs(SAMPLE_DEMO_LOGS);
         setError(null);
         setLoading(false);
@@ -40,7 +41,45 @@ export default function AdminDashboard({ token }) {
     fetchLogs();
     const interval = setInterval(fetchLogs, 5000);
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function exportCSV() {
+    fetch('http://localhost:8000/logs/export/csv', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+      .then(r => {
+        if (r.ok) return r.blob();
+        throw new Error();
+      })
+      .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'proctoring_logs.csv';
+        a.click();
+      })
+      .catch(() => generateClientCSV());
+  }
+
+  function generateClientCSV() {
+    const headers = ["Log ID", "Student Username", "AI Violation Event", "Suspicion Score", "Timestamp"];
+    const rows = logs.map(l => [l.id, l.user_id, l.event, l.suspicion_score, new Date(l.timestamp).toLocaleString()]);
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "proctoring_logs.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  const filteredLogs = logs.filter(l => {
+    const matchesUser = l.user_id.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesEvent = filterEvent === 'all' || l.event === filterEvent;
+    return matchesUser && matchesEvent;
+  });
 
   const total    = logs.length;
   const phones   = logs.filter(l => l.event === 'phone_detected').length;
@@ -75,33 +114,38 @@ export default function AdminDashboard({ token }) {
 
   const stats = [
     { label: 'Total Events',   value: total,           color: '#3b82f6' },
-    { label: 'Phone Detected', value: phones,           color: '#ef4444' },
-    { label: 'Looking Away',   value: looking,          color: '#f59e0b' },
-    { label: 'Tab Switches',   value: tabs,             color: '#ec4899' },
+    { label: 'Phone Detected', value: phones,          color: '#ef4444' },
+    { label: 'Looking Away',   value: looking,         color: '#f59e0b' },
+    { label: 'Tab Switches',   value: tabs,            color: '#ec4899' },
   ];
 
   return (
     <div style={{ animation: 'fadeIn 0.4s ease' }}>
       
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <h2 style={{
             fontSize: '22px', fontWeight: '700',
             background: 'linear-gradient(135deg, #fff, #94a3b8)',
             WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent'
-          }}>Teacher & Administrator Dashboard</h2>
+          }}>Teacher & Administrator Proctoring Dashboard</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginTop: '2px' }}>
-            Live Student Proctoring Monitor · Instant Analytics Feed
+            Live Student Proctoring Monitor · Neural Violation Feed
             {loading && ' · Refreshing...'}
           </p>
         </div>
-        <button onClick={fetchLogs} className="nav-btn active" style={{ padding: '8px 16px', fontSize: '13px' }}>
-          ↻ Refresh Logs
-        </button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button onClick={exportCSV} className="nav-btn" style={{ padding: '8px 16px', fontSize: '13px', borderColor: '#34d399', color: '#34d399' }}>
+            📥 Export CSV Report
+          </button>
+          <button onClick={fetchLogs} className="nav-btn active" style={{ padding: '8px 16px', fontSize: '13px' }}>
+            ↻ Refresh Logs
+          </button>
+        </div>
       </div>
 
-      {/* Stat cards */}
+      {/* Stat Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
         {stats.map((s, i) => (
           <div key={i} className="stat-card">
@@ -130,12 +174,39 @@ export default function AdminDashboard({ token }) {
         </ResponsiveContainer>
       </div>
 
+      {/* Filter and Search Bar */}
+      <div className="glass" style={{ padding: '16px', marginBottom: '20px', display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <input
+          type="text"
+          className="input-field"
+          style={{ flex: 1, minWidth: '220px' }}
+          placeholder="Filter by student username..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        <select
+          className="input-field"
+          style={{ width: '200px' }}
+          value={filterEvent}
+          onChange={(e) => setFilterEvent(e.target.value)}
+        >
+          <option value="all">All Events</option>
+          <option value="phone_detected">📱 Phone Detected</option>
+          <option value="looking_away">👀 Looking Away</option>
+          <option value="tab_switch">⚠️ Tab Switch</option>
+          <option value="no_face">🚫 No Face</option>
+          <option value="multiple_faces">👥 Multiple Faces</option>
+        </select>
+      </div>
+
       {/* Logs Table */}
       <div className="glass" style={{ overflow: 'hidden' }}>
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 8px #4ade80', animation: 'pulse 2s infinite' }} />
-          <span style={{ fontWeight: '600', color: 'var(--text-primary)' }}>Live Student Session Violation Logs</span>
-          <span style={{ background: 'rgba(59,130,246,0.15)', color: '#60a5fa', padding: '2px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: '600' }}>{total}</span>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#4ade80', boxShadow: '0 0 8px #4ade80', animation: 'pulse 2s infinite' }} />
+            <span style={{ fontWeight: '600', color: 'var(--text-primary)' }}>Live Student Session Violation Logs</span>
+            <span style={{ background: 'rgba(59,130,246,0.15)', color: '#60a5fa', padding: '2px 8px', borderRadius: '999px', fontSize: '11px', fontWeight: '600' }}>{filteredLogs.length}</span>
+          </div>
         </div>
 
         {error && <div className="error-banner" style={{ margin: '16px' }}>{error}</div>}
@@ -149,7 +220,7 @@ export default function AdminDashboard({ token }) {
             </tr>
           </thead>
           <tbody>
-            {logs.map(log => (
+            {filteredLogs.map(log => (
               <tr key={log.id}>
                 <td style={{ color: 'var(--text-muted)' }}>#{log.id}</td>
                 <td style={{ color: 'var(--text-primary)', fontWeight: '500' }}>{log.user_id}</td>

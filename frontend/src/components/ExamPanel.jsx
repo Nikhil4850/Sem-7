@@ -122,6 +122,7 @@ export default function ExamPanel({ token }) {
     if (timeLeft <= 0) { submitExam(); return; }
     const t = setInterval(() => setTimeLeft(p => p - 1), 1000);
     return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, timeLeft]);
 
   function formatTime(secs) {

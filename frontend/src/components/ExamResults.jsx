@@ -32,7 +32,43 @@ export default function ExamResults({ token }) {
         setResults(DEMO_RESULTS);
         setLoading(false);
       });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
+
+  function exportCSV() {
+    fetch(`${API}/exam/results/export/csv`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+      .then(r => {
+        if (r.ok) return r.blob();
+        throw new Error();
+      })
+      .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'exam_results.csv';
+        a.click();
+      })
+      .catch(() => generateClientCSV());
+  }
+
+  function generateClientCSV() {
+    const headers = ["Session ID", "Student Username", "Score", "Total Questions", "Percentage", "Status", "Submitted At"];
+    const rows = results.map(r => {
+      const totalQ = r.total_questions || 10;
+      const pct = Math.round((r.score / totalQ) * 100);
+      return [r.id, r.student_id, r.score, totalQ, `${pct}%`, pct >= 60 ? 'PASSED' : 'FAILED', new Date(r.submitted_at).toLocaleString()];
+    });
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "exam_results.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
 
   function formatDate(ts) {
     if (!ts) return '';
@@ -50,7 +86,7 @@ export default function ExamResults({ token }) {
     <div style={{ animation: 'fadeIn 0.4s ease' }}>
       
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <h2 style={{
             fontSize: '22px', fontWeight: '700',
@@ -62,6 +98,9 @@ export default function ExamResults({ token }) {
             {loading && ' · Loading...'}
           </p>
         </div>
+        <button onClick={exportCSV} className="nav-btn" style={{ padding: '8px 16px', fontSize: '13px', borderColor: '#34d399', color: '#34d399' }}>
+          📥 Export CSV Results Report
+        </button>
       </div>
 
       {/* Summary Cards */}

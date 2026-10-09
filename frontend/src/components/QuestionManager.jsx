@@ -39,7 +39,10 @@ export default function QuestionManager({ token }) {
     }
   }
 
-  useEffect(() => { fetchQuestions(); }, []);
+  useEffect(() => {
+    fetchQuestions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function saveQuestion() {
     setLoading(true);

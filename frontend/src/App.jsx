@@ -1,20 +1,24 @@
 import React, { useRef, useState, useEffect } from 'react';
-import Navbar           from './components/Navbar';
-import Camera           from './components/Camera';
-import DetectionHUD     from './components/DetectionHUD';
-import ExamPanel        from './components/ExamPanel';
-import AdminDashboard   from './components/AdminDashboard';
-import QuestionManager  from './components/QuestionManager';
-import ExamResults      from './components/ExamResults';
-import LandingPage      from './components/LandingPage';
-import CoursesPage      from './components/CoursesPage';
-import FeaturesPage     from './components/FeaturesPage';
-import DepartmentsPage  from './components/DepartmentsPage';
-import SchedulePage     from './components/SchedulePage';
-import CertificatesPage from './components/CertificatesPage';
-import FaqPage          from './components/FaqPage';
-import AuthModal        from './components/AuthModal';
-import { useProctor }   from './hooks/useProctor';
+import Navbar             from './components/Navbar';
+import Camera             from './components/Camera';
+import DetectionHUD       from './components/DetectionHUD';
+import ExamPanel          from './components/ExamPanel';
+import AdminDashboard     from './components/AdminDashboard';
+import QuestionManager    from './components/QuestionManager';
+import ExamResults        from './components/ExamResults';
+import StudentDashboard   from './components/StudentDashboard';
+import ExamManagement     from './components/ExamManagement';
+import SystemSettings     from './components/SystemSettings';
+import LiveSessionMonitor from './components/LiveSessionMonitor';
+import LandingPage        from './components/LandingPage';
+import CoursesPage        from './components/CoursesPage';
+import FeaturesPage       from './components/FeaturesPage';
+import DepartmentsPage    from './components/DepartmentsPage';
+import SchedulePage       from './components/SchedulePage';
+import CertificatesPage   from './components/CertificatesPage';
+import FaqPage            from './components/FaqPage';
+import AuthModal          from './components/AuthModal';
+import { useProctor }     from './hooks/useProctor';
 
 export default function App() {
   const videoRef = useRef(null);
@@ -29,7 +33,7 @@ export default function App() {
     const username = localStorage.getItem('username');
     if (token) {
       setUser({ token, role, username });
-      setView(role === 'admin' ? 'dashboard' : 'landing');
+      setView(role === 'admin' ? 'dashboard' : 'student-dashboard');
     }
   }, []);
 
@@ -38,9 +42,7 @@ export default function App() {
     localStorage.setItem('role', data.role);
     localStorage.setItem('username', data.username);
     setUser(data);
-    setAuthModalOpen(false);
-    // Admin → dashboard, student → landing (they choose when to start exam)
-    setView(data.role === 'admin' ? 'dashboard' : 'landing');
+    setView(data.role === 'admin' ? 'dashboard' : 'student-dashboard');
   }
 
   function handleLogout() {
@@ -97,6 +99,11 @@ export default function App() {
       {view === 'certificates' && <CertificatesPage onNavigate={setView} onOpenAuth={openAuth} />}
       {view === 'faq'          && <FaqPage onNavigate={setView} onOpenAuth={openAuth} />}
 
+      {/* Student Views */}
+      {view === 'student-dashboard' && user && (
+        <StudentDashboard user={user} token={user.token} onStartExam={() => setView('exam')} onNavigate={setView} />
+      )}
+
       {view === 'exam' && user && (
         <div className="grid" style={{ animation: 'fadeIn 0.4s ease' }}>
           <ExamPanel token={user.token} />
@@ -107,9 +114,13 @@ export default function App() {
         </div>
       )}
 
-      {view === 'dashboard' && user && <AdminDashboard token={user.token} />}
-      {view === 'questions' && user && <QuestionManager token={user.token} />}
-      {view === 'results'   && user && <ExamResults token={user.token} />}
+      {/* Admin Views */}
+      {view === 'dashboard'    && user && <AdminDashboard token={user.token} />}
+      {view === 'live-monitor' && user && <LiveSessionMonitor onNavigate={setView} />}
+      {view === 'questions'    && user && <QuestionManager token={user.token} />}
+      {view === 'exam-mgmt'    && user && <ExamManagement token={user.token} />}
+      {view === 'results'      && user && <ExamResults token={user.token} />}
+      {view === 'settings'     && user && <SystemSettings token={user.token} />}
 
       <AuthModal
         isOpen={authModalOpen}
