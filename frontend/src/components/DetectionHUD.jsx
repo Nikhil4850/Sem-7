@@ -14,6 +14,17 @@ export default function DetectionHUD({ result, connected }) {
   const gazePill  = looking_direction === 'centered' || looking_direction === 'connecting...' ? 'pill pill-green' : 'pill pill-yellow';
   const phonePill = phone_detected ? 'pill pill-red' : 'pill pill-green';
 
+  // Parse multiple_faces:N event to extract exact count
+  const multiFaceEvent = events && events.find(e => e.startsWith('multiple_faces'));
+  const multiFaceCount = multiFaceEvent
+    ? (multiFaceEvent.includes(':') ? parseInt(multiFaceEvent.split(':')[1]) : face_count)
+    : null;
+
+  const hasPhone    = events && events.some(e => e.startsWith('phone_detected'));
+  const hasNoFace   = events && events.some(e => e.startsWith('no_face'));
+  const hasMulti    = events && events.some(e => e.startsWith('multiple_faces'));
+  const hasLookAway = events && events.some(e => e.startsWith('looking_away'));
+
   return (
     <div className="hud">
       <div className="hud-conn">
@@ -34,7 +45,10 @@ export default function DetectionHUD({ result, connected }) {
       <div className="detect-rows">
         <div className="detect-row">
           <span className="detect-key">Faces detected</span>
-          <span className={facePill}>{face_count} face{face_count !== 1 ? 's' : ''}</span>
+          <span className={facePill}>
+            {face_count} face{face_count !== 1 ? 's' : ''}
+            {face_count > 1 && <span style={{ marginLeft: '6px' }}>⚠️</span>}
+          </span>
         </div>
         <div className="detect-row">
           <span className="detect-key">Gaze direction</span>
@@ -47,17 +61,21 @@ export default function DetectionHUD({ result, connected }) {
         {look_away_secs > 0 && (
           <div className="detect-row">
             <span className="detect-key">Looking away</span>
-            <span className={look_away_secs >= 3 ? 'pill pill-red' : 'pill pill-yellow'}>{look_away_secs}s</span>
+            <span className={look_away_secs >= 2.5 ? 'pill pill-red' : 'pill pill-yellow'}>{look_away_secs}s</span>
           </div>
         )}
       </div>
 
       {events && events.length > 0 && (
         <div className="alerts">
-          {events.includes('phone_detected')  && <div className="alert-red">Phone detected in frame</div>}
-          {events.includes('multiple_faces')  && <div className="alert-red">Multiple faces detected</div>}
-          {events.includes('no_face')         && <div className="alert-red">No face detected</div>}
-          {events.includes('looking_away')    && <div className="alert-yellow">Please look at the screen</div>}
+          {hasPhone    && <div className="alert-red">📱 Phone detected in frame</div>}
+          {hasMulti    && (
+            <div className="alert-red">
+              👥 {multiFaceCount || face_count} faces detected — only 1 allowed
+            </div>
+          )}
+          {hasNoFace   && <div className="alert-red">🚫 No face detected</div>}
+          {hasLookAway && <div className="alert-yellow">👀 Please look at the screen</div>}
         </div>
       )}
     </div>

@@ -1,0 +1,6 @@
+names:
+- phone
+nc: 1
+test: C:\Users\Nikhil\Downloads\sem 7\ai-proctor\datasets\Mobile phone detection.v2i.yolov8\test\images
+train: C:\Users\Nikhil\Downloads\sem 7\ai-proctor\datasets\Mobile phone detection.v2i.yolov8\train\images
+val: C:\Users\Nikhil\Downloads\sem 7\ai-proctor\datasets\Mobile phone detection.v2i.yolov8\valid\images

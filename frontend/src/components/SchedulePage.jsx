@@ -22,34 +22,7 @@ export default function SchedulePage({ onNavigate, onOpenAuth }) {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#080c14', color: '#f1f5f9', padding: '120px 24px 60px' }}>
-      
-      {/* Top Navigation */}
-      <nav style={{
-        position: 'fixed', top: 0, left: 0, width: '100%', zIndex: 1000,
-        padding: '16px 5%', background: 'rgba(8, 12, 20, 0.85)', backdropFilter: 'blur(20px)',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.08)', display: 'flex',
-        justifyContent: 'space-between', alignItems: 'center'
-      }}>
-        <div style={{ fontSize: '1.4rem', fontWeight: 800, cursor: 'pointer' }} onClick={() => onNavigate('landing')}>
-          <span style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6, #ec4899)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>EduVanguard</span>
-        </div>
-
-        <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
-          <button style={{ background: 'none', border: 'none', color: '#94a3b8', fontWeight: 500, cursor: 'pointer' }} onClick={() => onNavigate('landing')}>Home</button>
-          <button style={{ background: 'none', border: 'none', color: '#94a3b8', fontWeight: 500, cursor: 'pointer' }} onClick={() => onNavigate('courses')}>Courses</button>
-          <button style={{ background: 'none', border: 'none', color: '#94a3b8', fontWeight: 500, cursor: 'pointer' }} onClick={() => onNavigate('features')}>AI Proctoring</button>
-          <button style={{ background: 'none', border: 'none', color: '#94a3b8', fontWeight: 500, cursor: 'pointer' }} onClick={() => onNavigate('departments')}>Departments</button>
-          <button style={{ background: 'none', border: 'none', color: '#fff', fontWeight: 600, cursor: 'pointer' }} onClick={() => onNavigate('schedule')}>Schedule</button>
-          <button style={{ background: 'none', border: 'none', color: '#94a3b8', fontWeight: 500, cursor: 'pointer' }} onClick={() => onNavigate('certificates')}>Verify</button>
-          <button style={{ background: 'none', border: 'none', color: '#94a3b8', fontWeight: 500, cursor: 'pointer' }} onClick={() => onNavigate('faq')}>FAQ</button>
-        </div>
-
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <button className="nav-btn active" onClick={() => onOpenAuth('student')}>Student Login</button>
-        </div>
-      </nav>
-
+    <div style={{ minHeight: '100vh', background: '#080c14', color: '#f1f5f9', padding: '20px 24px 60px' }}>
       <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: '50px' }}>
           <h1 style={{ fontSize: '2.6rem', fontWeight: 800 }}>

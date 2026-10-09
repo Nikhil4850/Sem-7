@@ -27,7 +27,16 @@ ml-service/phone_model/
 ml-service/phone_model2/
 ml-service/phone_best/
 ml-service/phone_best2/
+ml-service/phone_best3/
+ml-service/phone_best4/
+ml-service/phone_best5/
+ml-service/phone_best6/
+ml-service/phone_best7/
+ml-service/phone_best8/
+ml-service/phone_trained/
+ml-service/phone_data.yaml
 datasets/
+Smartphone-Detection/
 
 # SQLite DB
 backend/proctor.db

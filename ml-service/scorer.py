@@ -44,7 +44,7 @@ class SuspicionScorer:
         # ── Multiple faces ────────────────────────────────────────
         elif face_count > 1:
             score += POINTS_MULTIPLE_FACES
-            events.append("multiple_faces")
+            events.append(f"multiple_faces:{face_count}")   # carries exact count
             self.look_away_start = None
             self.look_away_secs  = 0.0
 

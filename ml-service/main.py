@@ -227,13 +227,21 @@ def main():
         print(json.dumps({"error": f"Cannot open camera {CAMERA_INDEX}"}))
         return
 
+    # Set buffer size to 1 to prevent frame backlog delay
+    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+
     print("Camera opened. Starting detection...\n")
 
     scorer     = SuspicionScorer()
     last_print = 0.0
 
     while True:
-        ret, frame = cap.read()
+        # Grab latest frame from camera buffer to ensure zero latency
+        for _ in range(2):
+            cap.grab()
+        ret, frame = cap.retrieve()
+        if not ret:
+            ret, frame = cap.read()
         if not ret:
             print(json.dumps({"error": "Lost camera connection"}))
             break
@@ -245,7 +253,7 @@ def main():
         direction, yaw, pitch, frame = get_head_pose(frame)
 
         # Step 3 — phone detection (NEW)
-        phone_detected, frame = detect_phone(frame)
+        phone_detected, frame, phone_boxes = detect_phone(frame)
 
         # Step 4 — suspicion score
         score_data = scorer.update(face_count, direction, phone_detected)

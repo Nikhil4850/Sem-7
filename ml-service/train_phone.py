@@ -1,64 +1,64 @@
+"""
+Proper YOLOv8s phone detection training.
+- YOLOv8s (small) — much better accuracy than nano
+- 80 epochs with early stopping
+- Strong augmentation for real-world robustness
+- Output: ai-proctor/ml-service/phone_trained/weights/best.pt
+"""
+
 import os, yaml
 from pathlib import Path
 from ultralytics import YOLO
-import torch
 
 ROOT    = Path(__file__).parent.parent
 DATASET = ROOT / "datasets" / "Mobile phone detection.v2i.yolov8"
-OUT_DIR = Path(__file__).parent / "phone_best"
-OUT_DIR.mkdir(exist_ok=True)
+OUT_DIR = Path(__file__).parent
 
 # Write absolute-path data.yaml
-fixed_yaml = OUT_DIR / "data.yaml"
+fixed_yaml = OUT_DIR / "phone_data.yaml"
 with open(fixed_yaml, "w") as f:
     yaml.dump({
         "train": str(DATASET / "train" / "images"),
         "val":   str(DATASET / "valid" / "images"),
         "test":  str(DATASET / "test"  / "images"),
-        "nc": 1,
-        "names": ["Mobile-phone"],
+        "nc":    1,
+        "names": ["phone"],
     }, f)
 
-# Dynamic device & performance configuration
-has_cuda = torch.cuda.is_available()
-device = 0 if has_cuda else "cpu"
-workers = 4 if has_cuda else 0
-batch_size = 32 if has_cuda else 32
-img_size = 640 if has_cuda else 320
+print(f"Dataset: {DATASET}")
+print(f"Train images: {len(list((DATASET/'train'/'images').glob('*.jpg')))}")
+print(f"Val images:   {len(list((DATASET/'valid'/'images').glob('*.jpg')))}")
 
-if not has_cuda:
-    torch.set_num_threads(8)
+# Use YOLOv8s for better accuracy
+model = YOLO("yolov8s.pt")
 
-print(f"🚀 Training Config: device={device} | CUDA={has_cuda} | batch={batch_size} | imgsz={img_size}")
-
-model = YOLO("yolov8n.pt")   # use nano model for maximum training & inference speed
-
-model.train(
+results = model.train(
     data     = str(fixed_yaml),
-    epochs   = 25,
-    imgsz    = img_size,
-    batch    = batch_size,
-    name     = "phone_best",
-    project  = str(Path(__file__).parent),
-    patience = 8,
-    device   = device,
-    workers  = workers,
-    amp      = True,       # Mixed precision for maximum speed
-    cache    = "ram",      # Cache images in RAM to eliminate disk bottleneck
-    # Augmentation
-    hsv_h    = 0.015,
-    hsv_s    = 0.7,
-    hsv_v    = 0.4,
-    degrees  = 5.0,
-    translate= 0.1,
-    scale    = 0.5,
-    flipud   = 0.0,
+    epochs   = 80,
+    imgsz    = 640,
+    batch    = 8,
+    name     = "phone_trained",
+    project  = str(OUT_DIR),
+    patience = 20,
+    device   = "cpu",
+    workers  = 0,
+    # Augmentation for real-world robustness
+    hsv_h    = 0.02,    # hue variation
+    hsv_s    = 0.75,    # saturation
+    hsv_v    = 0.45,    # brightness
+    degrees  = 10.0,    # rotation
+    translate= 0.15,    # translation
+    scale    = 0.6,     # scale jitter
+    shear    = 5.0,     # shear
+    flipud   = 0.05,
     fliplr   = 0.5,
     mosaic   = 1.0,
-    mixup    = 0.1,
+    mixup    = 0.15,
+    copy_paste = 0.1,
     verbose  = True,
 )
 
-best = Path(__file__).parent / "phone_best" / "weights" / "best.pt"
-print(f"\nDone. Best model: {best}")
-
+best = OUT_DIR / "phone_trained" / "weights" / "best.pt"
+print(f"\nTraining complete!")
+print(f"Best model: {best}")
+print(f"mAP50: {results.results_dict.get('metrics/mAP50(B)', 'N/A')}")

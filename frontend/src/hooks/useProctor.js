@@ -8,6 +8,7 @@ const DEFAULT_RESULT = {
   face_count: 0,
   looking_direction: 'connecting...',
   phone_detected: false,
+  phone_boxes: [],
   look_away_secs: 0,
   suspicion_score: 0,
   events: [],

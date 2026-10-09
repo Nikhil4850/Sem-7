@@ -1605,11 +1605,12 @@ async def proctor_websocket(websocket: WebSocket):
 
             face_count,            frame = count_faces(frame)
             direction, yaw, pitch, frame = get_head_pose(frame)
-            phone_detected,        frame = detect_phone(frame)
+            phone_detected, frame, phone_boxes = detect_phone(frame)
             score_data = scorer.update(face_count, direction, phone_detected)
 
             for event in score_data["events"]:
-                await save_log(username, event, score_data["suspicion_score"])
+                # Store base event name only (strip ":count" suffix)
+                await save_log(username, event.split(":")[0], score_data["suspicion_score"])
 
             await websocket.send_text(json.dumps({
                 "face_count":        face_count,
@@ -1617,6 +1618,7 @@ async def proctor_websocket(websocket: WebSocket):
                 "yaw_deg":           yaw,
                 "pitch_deg":         pitch,
                 "phone_detected":    phone_detected,
+                "phone_boxes":       phone_boxes,
                 "look_away_secs":    score_data["look_away_secs"],
                 "suspicion_score":   score_data["suspicion_score"],
                 "events":            score_data["events"],
