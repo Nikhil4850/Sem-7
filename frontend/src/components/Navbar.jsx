@@ -5,19 +5,22 @@ export default function Navbar({ view, onNavigate, user, onLogout, onOpenAuth, c
     { key: 'landing',      label: 'Home' },
     { key: 'courses',      label: 'Courses' },
     { key: 'features',     label: 'AI Tech' },
-    { key: 'departments',  label: 'Departments' },
     { key: 'schedule',     label: 'Schedule' },
     { key: 'certificates', label: 'Verify' },
+    { key: 'compliance',   label: 'Privacy Governance' },
     { key: 'faq',          label: 'FAQ' },
   ];
 
   const adminNavs = [
-    { key: 'dashboard',    label: '📊 Logs' },
-    { key: 'live-monitor', label: '👁️ Live Monitor' },
-    { key: 'questions',    label: '📝 Questions' },
-    { key: 'exam-mgmt',    label: '🗓️ Exams' },
-    { key: 'results',      label: '🏆 Results' },
-    { key: 'settings',     label: '⚙️ Settings' },
+    { key: 'dashboard',      label: '📊 Logs' },
+    { key: 'live-monitor',   label: '👁️ Live Monitor' },
+    { key: 'evidence',       label: '🎬 Evidence Player' },
+    { key: 'analytics',      label: '📈 Analytics' },
+    { key: 'questions',      label: '📝 Questions' },
+    { key: 'exam-mgmt',      label: '🗓️ Exams' },
+    { key: 'results',        label: '🏆 Results' },
+    { key: 'system-health',  label: '⚡ AI Telemetry' },
+    { key: 'settings',       label: '⚙️ Settings' },
   ];
 
   return (
@@ -60,6 +63,18 @@ export default function Navbar({ view, onNavigate, user, onLogout, onOpenAuth, c
               🎓 Portal
             </button>
             <button
+              className={`nav-link ${view === 'verify' ? 'active' : ''}`}
+              onClick={() => onNavigate('verify')}
+            >
+              🪪 ID Check
+            </button>
+            <button
+              className={`nav-link ${view === 'practice-lab' ? 'active' : ''}`}
+              onClick={() => onNavigate('practice-lab')}
+            >
+              🧪 AI Lab
+            </button>
+            <button
               className={`nav-link exam-link ${view === 'exam' ? 'active' : ''}`}
               onClick={() => onNavigate('exam')}
             >
@@ -68,6 +83,7 @@ export default function Navbar({ view, onNavigate, user, onLogout, onOpenAuth, c
           </>
         )}
       </div>
+
 
       <div className="nav-right">
         {user ? (

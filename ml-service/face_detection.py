@@ -43,7 +43,7 @@ _haar_profile = cv2.CascadeClassifier(
 def count_faces(frame):
     """
     INPUT  : BGR frame (numpy array)
-    OUTPUT : face_count (int), annotated frame
+    OUTPUT : face_count (int), annotated frame, face_boxes list of (x1, y1, x2, y2)
     """
     h, w = frame.shape[:2]
 
@@ -79,10 +79,12 @@ def count_faces(frame):
             for (x, y, fw, fh) in profile:
                 detected.append((x, y, fw, fh, 0.8))
 
-    # ── Draw results ──────────────────────────────────────────────
+    # ── Draw results & build face_boxes ───────────────────────────
+    face_boxes = []
     for (x, y, fw, fh, conf) in detected:
+        face_boxes.append((x, y, x + fw, y + fh))
         cv2.rectangle(frame, (x, y), (x+fw, y+fh), (0, 220, 0), 2)
         cv2.putText(frame, f"{conf:.0%}", (x, max(y-6, 10)),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 220, 0), 1)
 
-    return len(detected), frame
+    return len(detected), frame, face_boxes

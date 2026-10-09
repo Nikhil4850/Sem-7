@@ -18,6 +18,14 @@ import SchedulePage       from './components/SchedulePage';
 import CertificatesPage   from './components/CertificatesPage';
 import FaqPage            from './components/FaqPage';
 import AuthModal          from './components/AuthModal';
+
+import IdentityVerifyPage from './components/IdentityVerifyPage';
+import EvidencePlayerPage from './components/EvidencePlayerPage';
+import AnalyticsPage      from './components/AnalyticsPage';
+import PracticeLabPage    from './components/PracticeLabPage';
+import SystemHealthPage   from './components/SystemHealthPage';
+import CompliancePage     from './components/CompliancePage';
+
 import { useProctor }     from './hooks/useProctor';
 
 export default function App() {
@@ -90,7 +98,7 @@ export default function App() {
 
       {error && user && view === 'exam' && <div className="error-banner">{error}</div>}
 
-      {/* Main Views */}
+      {/* Main Public Views */}
       {view === 'landing'      && <LandingPage onNavigate={setView} onOpenAuth={openAuth} />}
       {view === 'courses'      && <CoursesPage onNavigate={setView} onOpenAuth={openAuth} />}
       {view === 'features'     && <FeaturesPage onNavigate={setView} onOpenAuth={openAuth} />}
@@ -98,10 +106,19 @@ export default function App() {
       {view === 'schedule'     && <SchedulePage onNavigate={setView} onOpenAuth={openAuth} />}
       {view === 'certificates' && <CertificatesPage onNavigate={setView} onOpenAuth={openAuth} />}
       {view === 'faq'          && <FaqPage onNavigate={setView} onOpenAuth={openAuth} />}
+      {view === 'compliance'   && <CompliancePage onNavigate={setView} />}
 
       {/* Student Views */}
       {view === 'student-dashboard' && user && (
-        <StudentDashboard user={user} token={user.token} onStartExam={() => setView('exam')} onNavigate={setView} />
+        <StudentDashboard user={user} token={user.token} onStartExam={() => setView('verify')} onNavigate={setView} />
+      )}
+
+      {view === 'verify' && user && (
+        <IdentityVerifyPage onNavigate={setView} onStartExam={() => setView('exam')} />
+      )}
+
+      {view === 'practice-lab' && (
+        <PracticeLabPage onNavigate={setView} />
       )}
 
       {view === 'exam' && user && (
@@ -115,12 +132,15 @@ export default function App() {
       )}
 
       {/* Admin Views */}
-      {view === 'dashboard'    && user && <AdminDashboard token={user.token} />}
-      {view === 'live-monitor' && user && <LiveSessionMonitor onNavigate={setView} />}
-      {view === 'questions'    && user && <QuestionManager token={user.token} />}
-      {view === 'exam-mgmt'    && user && <ExamManagement token={user.token} />}
-      {view === 'results'      && user && <ExamResults token={user.token} />}
-      {view === 'settings'     && user && <SystemSettings token={user.token} />}
+      {view === 'dashboard'     && user && <AdminDashboard token={user.token} />}
+      {view === 'live-monitor'  && user && <LiveSessionMonitor onNavigate={setView} />}
+      {view === 'evidence'      && user && <EvidencePlayerPage onNavigate={setView} />}
+      {view === 'analytics'     && user && <AnalyticsPage token={user.token} onNavigate={setView} />}
+      {view === 'questions'     && user && <QuestionManager token={user.token} />}
+      {view === 'exam-mgmt'     && user && <ExamManagement token={user.token} />}
+      {view === 'results'       && user && <ExamResults token={user.token} />}
+      {view === 'system-health' && user && <SystemHealthPage token={user.token} onNavigate={setView} />}
+      {view === 'settings'      && user && <SystemSettings token={user.token} />}
 
       <AuthModal
         isOpen={authModalOpen}

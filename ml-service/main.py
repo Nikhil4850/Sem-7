@@ -247,13 +247,13 @@ def main():
             break
 
         # Step 1 — count faces
-        face_count, frame = count_faces(frame)
+        face_count, frame, face_boxes = count_faces(frame)
 
         # Step 2 — gaze direction
         direction, yaw, pitch, frame = get_head_pose(frame)
 
         # Step 3 — phone detection (NEW)
-        phone_detected, frame, phone_boxes = detect_phone(frame)
+        phone_detected, frame, phone_boxes = detect_phone(frame, face_boxes=face_boxes)
 
         # Step 4 — suspicion score
         score_data = scorer.update(face_count, direction, phone_detected)
