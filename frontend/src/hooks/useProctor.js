@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { API } from '../api';
 
 const FRAME_INTERVAL_MS = 500;
 const MAX_RECONNECT_ATTEMPTS = 5;
@@ -66,8 +67,9 @@ export function useProctor(videoRef, token) {
 
   const connect = useCallback(() => {
     if (!mountedRef.current) return;
+    if (!token) return; // don't connect without a valid token
 
-    const wsUrl = `ws://localhost:8000/ws/proctor?token=${token || ''}`;
+    const wsUrl = API.wsProctor(token);
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
@@ -101,7 +103,7 @@ export function useProctor(videoRef, token) {
         setError(`Disconnected. Reconnecting in ${delay/1000}s… (attempt ${reconnectRef.current}/${MAX_RECONNECT_ATTEMPTS})`);
         reconnectTimer.current = setTimeout(connect, delay);
       } else {
-        setError('Cannot connect to backend. Is the server running on port 8000?');
+        setError('Cannot connect to proctoring server. Is the backend running on port 8000?');
       }
     };
   }, [sendFrame, token]);

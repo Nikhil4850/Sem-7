@@ -178,6 +178,96 @@ export const coursesData = [
     desc: "Develop finite state machines, utility AI decision trees, A* pathfinding navigation meshes, and reactive squad behavior systems.",
     modules: ["Finite State Machines", "Behavior Trees", "A* Pathfinding", "NavMesh Generation", "Perception & Stealth Systems"],
     questionsCount: 10
+  },
+  {
+    id: "quantum-701",
+    code: "QC-701",
+    title: "Quantum Computing & Qiskit Circuit Algorithms",
+    category: "ai",
+    categoryLabel: "Quantum AI",
+    level: "Advanced",
+    duration: "10 Weeks",
+    studentsCount: 650,
+    rating: 4.9,
+    image: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=600&auto=format&fit=crop",
+    desc: "Formulate quantum superposition, entanglement gates, Grover's search algorithm, and Qiskit quantum circuit simulations.",
+    modules: ["Qubits & Bloch Sphere", "Quantum Gates & Circuits", "Grover's Search Algorithm", "Shor's Factoring", "Qiskit Python SDK"],
+    questionsCount: 12
+  },
+  {
+    id: "rob-801",
+    code: "ROB-801",
+    title: "Autonomous Robotics & LiDAR SLAM Perception",
+    category: "ai",
+    categoryLabel: "Robotics & AI",
+    level: "Advanced",
+    duration: "12 Weeks",
+    studentsCount: 1280,
+    rating: 4.9,
+    image: "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=600&auto=format&fit=crop",
+    desc: "Implement 2D/3D LiDAR SLAM mapping, Kalman filter state estimation, ROS2 middleware, and autonomous obstacle avoidance.",
+    modules: ["ROS2 Architecture", "LiDAR Point Clouds", "Extended Kalman Filters", "SLAM Mapping", "Trajectory Motion Planning"],
+    questionsCount: 15
+  },
+  {
+    id: "chain-901",
+    code: "CHAIN-901",
+    title: "Blockchain Security & Smart Contract Audit",
+    category: "cyber",
+    categoryLabel: "Cyber Security",
+    level: "Intermediate",
+    duration: "8 Weeks",
+    studentsCount: 1740,
+    rating: 4.8,
+    image: "https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=600&auto=format&fit=crop",
+    desc: "Audit Solidity smart contracts, identify reentrancy attacks, analyze Merkle tree proofs, and secure decentralized protocol consensus.",
+    modules: ["Solidity Fundamentals", "Reentrancy & Overflow Audits", "Merkle Proofs", "Consensus Algorithms", "DeFi Protocol Auditing"],
+    questionsCount: 12
+  },
+  {
+    id: "mobile-1001",
+    code: "MOB-1001",
+    title: "Cross-Platform Mobile App Engineering",
+    category: "cs",
+    categoryLabel: "Computer Science",
+    level: "Intermediate",
+    duration: "8 Weeks",
+    studentsCount: 2890,
+    rating: 4.7,
+    image: "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=600&auto=format&fit=crop",
+    desc: "Build high-performance mobile applications using React Native, Flutter, offline state synchronization, and native device camera integration.",
+    modules: ["React Native State Management", "Flutter Widget Tree", "Native Camera Hooks", "Offline Cache Sync", "App Store Publishing"],
+    questionsCount: 12
+  },
+  {
+    id: "bio-1101",
+    code: "BIO-1101",
+    title: "Bioinformatics & Genomic Machine Learning",
+    category: "ds",
+    categoryLabel: "Data Science",
+    level: "Advanced",
+    duration: "10 Weeks",
+    studentsCount: 910,
+    rating: 4.9,
+    image: "https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?w=600&auto=format&fit=crop",
+    desc: "Apply deep neural networks to DNA sequence alignment, protein folding predictions, gene expression clustering, and biomedical datasets.",
+    modules: ["Genomic Sequence Analysis", "BLAST Alignment", "Protein Folding Deep Learning", "Biomedical Feature Selection", "RNA-Seq Analytics"],
+    questionsCount: 14
+  },
+  {
+    id: "sys-1201",
+    code: "SYS-1201",
+    title: "High-Performance C++ & Operating Systems",
+    category: "cs",
+    categoryLabel: "Computer Science",
+    level: "Advanced",
+    duration: "12 Weeks",
+    studentsCount: 3410,
+    rating: 4.9,
+    image: "https://images.unsplash.com/photo-1515879218367-8466d910aaa4?w=600&auto=format&fit=crop",
+    desc: "Master lock-free data structures, multithreading synchronization primitives, custom memory allocators, and Linux kernel subsystem design.",
+    modules: ["C++20 Memory Model", "Lock-Free Concurrency", "Paging & Virtual Memory", "Custom Allocators", "Linux Kernel System Calls"],
+    questionsCount: 15
   }
 ];
 
@@ -241,6 +331,26 @@ export const departmentsData = [
     icon: "🎮",
     desc: "Pioneering 3D physics engines, GLSL shader math, multiplayer WebSockets, and interactive game AI.",
     researchFocus: "Real-Time Raytracing & Spatial NPC Behavior Trees"
+  },
+  {
+    id: "quantum",
+    name: "Center for Quantum Computing & Information Physics",
+    head: "Dr. Rajiv Patel, Ph.D.",
+    coursesCount: 8,
+    studentsCount: 3200,
+    icon: "⚛️",
+    desc: "Investigating quantum gate circuits, fault-tolerant error correction, and quantum cryptographic algorithms.",
+    researchFocus: "Superconducting Qubit Algorithms & Quantum Error Correction"
+  },
+  {
+    id: "robotics",
+    name: "Institute of Autonomous Robotics & Bio-Engineering",
+    head: "Dr. Amara Thorne, Ph.D.",
+    coursesCount: 9,
+    studentsCount: 4100,
+    icon: "🤖",
+    desc: "Innovating autonomous SLAM navigation, bio-inspired robotics, and real-time computer vision control loops.",
+    researchFocus: "LiDAR Spatial Perception & Human-Robot Interaction"
   }
 ];
 
@@ -272,6 +382,34 @@ export const facultyData = [
     degree: "Ph.D. in Statistics, UC Berkeley",
     specialty: "Machine Learning Regression & Neural PyTorch",
     email: "s.lin@eduvanguard.edu"
+  },
+  {
+    name: "Dr. Rajiv Patel",
+    title: "Director of Quantum Computing",
+    degree: "Ph.D. in Quantum Physics, Oxford",
+    specialty: "Qiskit Algorithms & Qubit Entanglement",
+    email: "r.patel@eduvanguard.edu"
+  },
+  {
+    name: "Dr. Amara Thorne",
+    title: "Professor of Autonomous Systems",
+    degree: "Ph.D. in Robotics, ETH Zurich",
+    specialty: "LiDAR SLAM & Perception Neural Networks",
+    email: "a.thorne@eduvanguard.edu"
+  },
+  {
+    name: "Prof. Michael Chang",
+    title: "Senior Lecturer in Cloud Engineering",
+    degree: "M.S. Computer Engineering, Harvard",
+    specialty: "Kubernetes Edge Clusters & Distributed WebSockets",
+    email: "m.chang@eduvanguard.edu"
+  },
+  {
+    name: "Dr. Sarah Jenkins",
+    title: "Lead Invigilator & Academic Integrity Specialist",
+    degree: "Ph.D. in Educational Ethics, Columbia",
+    specialty: "Biometric Policy Governance & Appeal Auditing",
+    email: "s.jenkins@eduvanguard.edu"
   }
 ];
 
@@ -296,6 +434,20 @@ export const eventsData = [
     speaker: "Prof. Arthur Pendelton",
     time: "11:00 AM EST",
     tag: "Webinar"
+  },
+  {
+    date: "NOV 18, 2026",
+    title: "Quantum Algorithm Simulation & Qiskit Bootcamp",
+    speaker: "Dr. Rajiv Patel",
+    time: "01:00 PM EST",
+    tag: "Certification"
+  },
+  {
+    date: "DEC 02, 2026",
+    title: "Autonomous Robotics & SLAM Perception Hackathon",
+    speaker: "Dr. Amara Thorne",
+    time: "09:00 AM EST",
+    tag: "Hackathon"
   }
 ];
 
@@ -319,5 +471,14 @@ export const faqData = [
   {
     question: "How are digital certificates issued and verified?",
     answer: "Upon achieving a passing score (≥ 70%) on a proctored examination, a digital certificate is automatically generated with a cryptographic hash ID that can be verified online anytime."
+  },
+  {
+    question: "How is candidate privacy protected under FERPA & GDPR?",
+    answer: "Webcam feeds are processed locally or on isolated temporary GPU inference workers. Raw video recordings are never saved permanently without candidate consent; only structured telemetry event logs (bounding box coordinates, timestamps, confidence values) are persisted."
+  },
+  {
+    question: "What happens if a student experiences a temporary network disconnect?",
+    answer: "Our WebSockets client automatically attempts reconnection for up to 60 seconds without forfeiting the examination timer or losing previously answered questions."
   }
 ];
+

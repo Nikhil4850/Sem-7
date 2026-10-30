@@ -1,194 +1,196 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { BASE_URL } from '../api';
+
+const V_LABELS = { phone_detected:'Phone Detected', multiple_faces:'Multiple Faces', tab_switch:'Tab Switch', looking_away:'Looking Away', no_face:'No Face Detected' };
+const V_COLORS = { phone_detected:'#ef4444', multiple_faces:'#f97316', tab_switch:'#f59e0b', looking_away:'#3b82f6', no_face:'#8b5cf6' };
+const V_ICONS  = { phone_detected:'📱', multiple_faces:'👥', tab_switch:'🔄', looking_away:'👀', no_face:'🚫' };
 
 export default function EvidencePlayerPage({ onNavigate }) {
-  const [selectedSession] = useState('SESS-1042');
+  const [logs,            setLogs]            = useState([]);
+  const [loading,         setLoading]         = useState(true);
+  const [filterEvent,     setFilterEvent]     = useState('ALL');
+  const [currentIndex,    setCurrentIndex]    = useState(0);
+  const [filterStudent,   setFilterStudent]   = useState('ALL');
+  const [proctorNotes,    setProctorNotes]    = useState('');
+  const [decision,        setDecision]        = useState('FLAGGED');
+  const [savedStatus,     setSavedStatus]     = useState(null);
+  const token = localStorage.getItem('token');
 
-  const [currentFrameIndex, setCurrentFrameIndex] = useState(0);
-  const [filterBreach, setFilterBreach] = useState('ALL');
-  const [proctorNotes, setProctorNotes] = useState('Candidate observed glancing repeatedly towards left lower desk area at timestamp 14:20.');
-  const [decision, setDecision] = useState('FLAGGED');
-  const [savedStatus, setSavedStatus] = useState(null);
+  useEffect(() => {
+    fetch(`${BASE_URL}/api/proctoring/logs`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(r => r.json())
+      .then(data => { setLogs(Array.isArray(data) ? data : []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [token]);
 
-  const mockIncidents = [
-    { time: '04:12', type: 'smartphone_detected', label: 'Smartphone Detected (YOLOv8 94%)', level: 'danger', score: 45, snippet: 'Device placed near keyboard' },
-    { time: '14:20', type: 'looking_left', label: 'Off-Screen Gaze (Head Pitch -24°)', level: 'warning', score: 20, snippet: 'Looking away left for >6s' },
-    { time: '28:45', type: 'tab_switch', label: 'Tab Switch / Window Blur Event', level: 'danger', score: 30, snippet: 'Browser focus lost' },
-    { time: '41:10', type: 'multiple_faces', label: 'Multiple Persons Detected', level: 'danger', score: 50, snippet: 'Secondary face detected in background' },
-  ];
+  const students   = [...new Set(logs.map(l => l.user_id).filter(Boolean))];
+  const eventTypes = [...new Set(logs.map(l => l.event).filter(Boolean))];
 
-  const filteredIncidents = filterBreach === 'ALL' 
-    ? mockIncidents 
-    : mockIncidents.filter(i => i.type === filterBreach);
+  const filtered = logs.filter(l => {
+    const matchE = filterEvent   === 'ALL' || l.event   === filterEvent;
+    const matchS = filterStudent === 'ALL' || l.user_id === filterStudent;
+    return matchE && matchS;
+  });
 
-  const activeFrame = mockIncidents[currentFrameIndex] || mockIncidents[0];
+  const active = filtered[currentIndex] || filtered[0];
 
-  const handleSaveAudit = () => {
-    setSavedStatus('Audit Review Saved & Disciplinary Log Updated!');
+  function handleSave() {
+    setSavedStatus('Audit verdict saved.');
     setTimeout(() => setSavedStatus(null), 3000);
-  };
+  }
 
   return (
-    <div className="container" style={{ maxWidth: '1250px', margin: '30px auto', animation: 'fadeIn 0.4s ease' }}>
-      
+    <div style={{ width:'100%', animation:'fadeIn 0.4s ease' }}>
+
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'24px', flexWrap:'wrap', gap:'12px' }}>
         <div>
-          <span className="badge badge-warning" style={{ marginBottom: '6px' }}>Invigilator Evidence Player</span>
-          <h2 style={{ fontSize: '1.6rem' }}>Session Violation Snapshot Replay & Audit</h2>
+          <span className="badge badge-warning" style={{ marginBottom:'6px' }}>Invigilator Evidence Player</span>
+          <h2 style={{ fontSize:'1.6rem', fontWeight:800, color:'#0f172a' }}>Proctoring Violation Log Viewer</h2>
+          <p style={{ color:'#64748b', fontSize:'0.85rem', marginTop:'4px' }}>
+            {loading ? 'Loading...' : `${logs.length} total events · ${filtered.length} shown`}
+          </p>
         </div>
-        <button className="btn btn-secondary" onClick={() => onNavigate('results')}>← Back to Exam Results</button>
+        <button className="btn btn-secondary" onClick={() => onNavigate('dashboard')}>← Back</button>
       </div>
 
       {savedStatus && (
-        <div className="badge badge-success" style={{ width: '100%', padding: '12px', textAlign: 'center', marginBottom: '20px', fontSize: '0.95rem' }}>
+        <div style={{ padding:'12px', background:'#f0fdf4', border:'1px solid #bbf7d0', borderRadius:'8px', color:'#15803d', fontWeight:600, marginBottom:'16px', fontSize:'0.88rem' }}>
           ✓ {savedStatus}
         </div>
       )}
 
-      {/* Main Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
-        
-        {/* Left Column: Frame Snapshot Viewer & Timeline */}
-        <div>
-          <div className="card" style={{ padding: '24px', marginBottom: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <div>
-                <strong style={{ fontSize: '1.1rem' }}>Candidate: Sarah Jenkins (CS-402)</strong>
-                <span className="text-muted" style={{ marginLeft: '12px', fontSize: '0.85rem' }}>Session ID: {selectedSession}</span>
-              </div>
-              <span className={`badge badge-${activeFrame.level}`}>Timestamp {activeFrame.time}</span>
-            </div>
+      {loading ? (
+        <div style={{ textAlign:'center', padding:'60px', color:'#94a3b8' }}>
+          <div style={{ fontSize:'2rem', marginBottom:'10px' }}>⏳</div> Loading violation logs...
+        </div>
+      ) : logs.length === 0 ? (
+        <div style={{ textAlign:'center', padding:'60px', background:'#fff', borderRadius:'16px', border:'1px solid #e8edf2', color:'#64748b' }}>
+          <div style={{ fontSize:'3rem', marginBottom:'14px' }}>📭</div>
+          <div style={{ fontWeight:700, color:'#0f172a', marginBottom:'6px' }}>No violations recorded yet</div>
+          <div style={{ fontSize:'0.85rem' }}>Violation events will appear here after students complete proctored exams.</div>
+        </div>
+      ) : (
+        <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr', gap:'24px' }}>
 
-            {/* Simulated Frame Viewer */}
-            <div style={{ position: 'relative', width: '100%', height: '420px', background: '#090d16', borderRadius: '8px', border: '1px solid var(--border-color)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ position: 'absolute', top: '16px', left: '16px', background: 'rgba(0,0,0,0.7)', padding: '6px 12px', borderRadius: '4px', fontSize: '0.8rem', color: '#fff' }}>
-                REC 🔴 Frame #{currentFrameIndex + 1420} • 1080p 30fps
+          {/* Left — active event viewer */}
+          <div>
+            <div className="card" style={{ padding:'24px', marginBottom:'20px' }}>
+              {/* Filters */}
+              <div style={{ display:'flex', gap:'12px', marginBottom:'20px', flexWrap:'wrap' }}>
+                <select className="form-select" style={{ flex:1 }} value={filterStudent} onChange={e => { setFilterStudent(e.target.value); setCurrentIndex(0); }}>
+                  <option value="ALL">All Students</option>
+                  {students.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+                <select className="form-select" style={{ flex:1 }} value={filterEvent} onChange={e => { setFilterEvent(e.target.value); setCurrentIndex(0); }}>
+                  <option value="ALL">All Events ({logs.length})</option>
+                  {eventTypes.map(e => <option key={e} value={e}>{V_LABELS[e]||e} ({logs.filter(l=>l.event===e).length})</option>)}
+                </select>
               </div>
 
-              {/* Bounding Box Visual Simulation */}
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '4rem', marginBottom: '12px' }}>👤</div>
-                <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Snapshot Frame at {activeFrame.time}</div>
-                {activeFrame.type === 'smartphone_detected' && (
-                  <div style={{ marginTop: '16px', border: '2px solid #ef4444', background: 'rgba(239, 68, 68, 0.15)', padding: '8px 16px', borderRadius: '6px', color: '#ef4444', fontWeight: 700, fontSize: '0.85rem' }}>
-                    📱 YOLOv8 Bounding Box: [x:240, y:180, w:85, h:160] Phone Confidence: 94.2%
+              {active && (
+                <>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'16px' }}>
+                    <div>
+                      <strong style={{ fontSize:'1rem', color:'#0f172a' }}>Student: {active.user_id}</strong>
+                      <span style={{ marginLeft:'12px', fontSize:'0.82rem', color:'#94a3b8' }}>Event #{active.id}</span>
+                    </div>
+                    <span style={{
+                      fontSize:'0.78rem', fontWeight:700, padding:'4px 12px', borderRadius:'20px',
+                      background:`${V_COLORS[active.event]||'#94a3b8'}18`,
+                      color: V_COLORS[active.event]||'#64748b',
+                      border:`1px solid ${V_COLORS[active.event]||'#e2e8f0'}44`,
+                    }}>
+                      {V_ICONS[active.event]||'⚠️'} {V_LABELS[active.event]||active.event}
+                    </span>
                   </div>
-                )}
-                {activeFrame.type === 'multiple_faces' && (
-                  <div style={{ marginTop: '16px', border: '2px solid #ef4444', background: 'rgba(239, 68, 68, 0.15)', padding: '8px 16px', borderRadius: '6px', color: '#ef4444', fontWeight: 700, fontSize: '0.85rem' }}>
-                    👥 YuNet Face Detector: Count = 2 Faces Detected in Field of View
-                  </div>
-                )}
-              </div>
-            </div>
 
-            {/* Frame Timeline Slider */}
-            <div style={{ marginTop: '20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '8px' }}>
-                <span>00:00 (Start)</span>
-                <span>Incident Marker {activeFrame.time}</span>
-                <span>60:00 (Submitted)</span>
-              </div>
-              <input 
-                type="range" 
-                min="0" 
-                max={mockIncidents.length - 1} 
-                value={currentFrameIndex} 
-                onChange={e => setCurrentFrameIndex(Number(e.target.value))}
-                style={{ width: '100%', cursor: 'pointer' }}
-              />
+                  {/* Simulated frame */}
+                  <div style={{ height:'320px', background:'#0f172a', borderRadius:'12px', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:'20px', border:`1.5px solid ${V_COLORS[active.event]||'#334155'}`, position:'relative' }}>
+                    <div style={{ textAlign:'center', color:'#94a3b8' }}>
+                      <div style={{ fontSize:'3rem', marginBottom:'10px' }}>{V_ICONS[active.event]||'⚠️'}</div>
+                      <div style={{ fontSize:'0.88rem', fontWeight:600, color:'#fff', marginBottom:'6px' }}>{V_LABELS[active.event]||active.event}</div>
+                      <div style={{ fontSize:'0.75rem' }}>Suspicion Score: <strong style={{ color: active.suspicion_score>60?'#ef4444':'#f59e0b' }}>{active.suspicion_score}</strong></div>
+                      <div style={{ fontSize:'0.72rem', marginTop:'4px', color:'#64748b' }}>{active.timestamp ? new Date(active.timestamp).toLocaleString() : '—'}</div>
+                    </div>
+                  </div>
+
+                  {/* Navigation */}
+                  <div style={{ display:'flex', alignItems:'center', gap:'12px' }}>
+                    <button className="btn btn-secondary" style={{ padding:'6px 14px' }} disabled={currentIndex === 0} onClick={() => setCurrentIndex(i => i-1)}>← Prev</button>
+                    <div style={{ flex:1 }}>
+                      <input type="range" min="0" max={Math.max(filtered.length-1,0)} value={currentIndex}
+                        onChange={e => setCurrentIndex(Number(e.target.value))} style={{ width:'100%' }} />
+                      <div style={{ display:'flex', justifyContent:'space-between', fontSize:'0.72rem', color:'#94a3b8', marginTop:'4px' }}>
+                        <span>Event 1</span>
+                        <span>{currentIndex+1} / {filtered.length}</span>
+                        <span>Event {filtered.length}</span>
+                      </div>
+                    </div>
+                    <button className="btn btn-secondary" style={{ padding:'6px 14px' }} disabled={currentIndex >= filtered.length-1} onClick={() => setCurrentIndex(i => i+1)}>Next →</button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
-          {/* Suspicion Score Heatmap Breakdown */}
-          <div className="card" style={{ padding: '20px' }}>
-            <h4 style={{ fontSize: '1rem', marginBottom: '16px' }}>Session Suspicion Accumulation Graph</h4>
-            <div style={{ display: 'flex', alignItems: 'flex-end', height: '90px', gap: '8px', paddingBottom: '8px', borderBottom: '1px solid var(--border-color)' }}>
-              {[10, 15, 12, 45, 48, 52, 60, 75, 82, 85, 95].map((val, idx) => (
-                <div key={idx} style={{ flex: 1, height: `${val}%`, background: val > 60 ? '#ef4444' : val > 30 ? '#f59e0b' : '#6366f1', borderRadius: '4px' }} title={`Minute ${idx*5}: Score ${val}`} />
-              ))}
+          {/* Right — log list + verdict */}
+          <div style={{ display:'flex', flexDirection:'column', gap:'20px' }}>
+
+            {/* Event list */}
+            <div className="card" style={{ padding:'20px' }}>
+              <h4 style={{ fontSize:'0.95rem', fontWeight:700, color:'#0f172a', marginBottom:'14px' }}>
+                Breach Events ({filtered.length})
+              </h4>
+              <div style={{ display:'flex', flexDirection:'column', gap:'8px', maxHeight:'320px', overflowY:'auto' }}>
+                {filtered.map((log, idx) => (
+                  <div key={log.id||idx} onClick={() => setCurrentIndex(idx)} style={{
+                    padding:'10px 12px', borderRadius:'8px', cursor:'pointer',
+                    border: currentIndex===idx ? '1.5px solid #0066ff' : '1px solid #e2e8f0',
+                    background: currentIndex===idx ? '#eff6ff' : '#f8fafc',
+                    display:'flex', justifyContent:'space-between', alignItems:'center',
+                  }}>
+                    <div>
+                      <div style={{ fontSize:'0.82rem', fontWeight:700, color:'#0f172a' }}>
+                        {V_ICONS[log.event]||'⚠️'} {V_LABELS[log.event]||log.event}
+                      </div>
+                      <div style={{ fontSize:'0.7rem', color:'#64748b' }}>{log.user_id} · Score: {log.suspicion_score}</div>
+                    </div>
+                    <span style={{ fontSize:'0.68rem', color:'#94a3b8', whiteSpace:'nowrap' }}>
+                      {log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : '—'}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '6px' }}>
-              <span>0m</span>
-              <span>15m</span>
-              <span>30m</span>
-              <span>45m</span>
-              <span>60m</span>
+
+            {/* Verdict form */}
+            <div className="card" style={{ padding:'20px' }}>
+              <h4 style={{ fontSize:'0.95rem', fontWeight:700, color:'#0f172a', marginBottom:'14px' }}>Proctor Verdict</h4>
+              <div style={{ marginBottom:'12px' }}>
+                <label style={{ fontSize:'0.82rem', color:'#64748b', display:'block', marginBottom:'5px' }}>Decision</label>
+                <select className="form-select" value={decision} onChange={e => setDecision(e.target.value)}>
+                  <option value="CLEAR">Clear — No Breach</option>
+                  <option value="WARNING">Issue Warning</option>
+                  <option value="FLAGGED">Flag for Review</option>
+                  <option value="DISQUALIFIED">Invalidate Exam</option>
+                </select>
+              </div>
+              <div style={{ marginBottom:'14px' }}>
+                <label style={{ fontSize:'0.82rem', color:'#64748b', display:'block', marginBottom:'5px' }}>Remarks</label>
+                <textarea className="form-input" rows="3" value={proctorNotes}
+                  onChange={e => setProctorNotes(e.target.value)}
+                  placeholder="Add notes about the violation..." style={{ resize:'vertical' }} />
+              </div>
+              <button className="btn btn-primary" style={{ width:'100%' }} onClick={handleSave}>
+                💾 Save Audit Verdict
+              </button>
             </div>
           </div>
         </div>
-
-        {/* Right Column: Violation Logs & Proctor Decision Form */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          
-          {/* Filterable Incident Feed */}
-          <div className="card" style={{ padding: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h4 style={{ fontSize: '1rem' }}>Detected Breach Events</h4>
-              <select className="form-select" style={{ width: 'auto', padding: '4px 8px', fontSize: '0.8rem' }} value={filterBreach} onChange={e => setFilterBreach(e.target.value)}>
-                <option value="ALL">All Types ({mockIncidents.length})</option>
-                <option value="smartphone_detected">Smartphones</option>
-                <option value="looking_left">Gaze Deviations</option>
-                <option value="tab_switch">Tab Switches</option>
-                <option value="multiple_faces">Multiple Persons</option>
-              </select>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '280px', overflowY: 'auto' }}>
-              {filteredIncidents.map((inc, idx) => (
-                <div 
-                  key={idx} 
-                  onClick={() => setCurrentFrameIndex(mockIncidents.indexOf(inc))}
-                  style={{
-                    padding: '12px', borderRadius: '6px', border: '1px solid var(--border-color)',
-                    background: mockIncidents[currentFrameIndex] === inc ? 'rgba(99, 102, 241, 0.15)' : 'var(--bg-dark)',
-                    cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-                  }}
-                >
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: '0.88rem' }}>{inc.label}</div>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{inc.snippet}</div>
-                  </div>
-                  <span className={`badge badge-${inc.level}`} style={{ fontSize: '0.75rem' }}>{inc.time}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Official Invigilator Verdict Form */}
-          <div className="card" style={{ padding: '20px' }}>
-            <h4 style={{ fontSize: '1rem', marginBottom: '14px' }}>Proctor Verdict & Report Sign-Off</h4>
-            
-            <div style={{ marginBottom: '14px' }}>
-              <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px', color: 'var(--text-muted)' }}>Disciplinary Decision</label>
-              <select className="form-select" value={decision} onChange={e => setDecision(e.target.value)}>
-                <option value="CLEAR">Clear Flag - No Breach Confirmed</option>
-                <option value="WARNING">Issue Formal Warning to Student</option>
-                <option value="FLAGGED">Flag Session for Academic Board Review</option>
-                <option value="DISQUALIFIED">Immediate Exam Invalidation / Zero Score</option>
-              </select>
-            </div>
-
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px', color: 'var(--text-muted)' }}>Proctor Audit Remarks</label>
-              <textarea 
-                className="form-input" 
-                rows="3" 
-                value={proctorNotes} 
-                onChange={e => setProctorNotes(e.target.value)}
-                style={{ resize: 'vertical' }}
-              />
-            </div>
-
-            <button className="btn btn-primary" style={{ width: '100%' }} onClick={handleSaveAudit}>
-              💾 Save Official Audit Verdict
-            </button>
-          </div>
-
-        </div>
-
-      </div>
-
+      )}
     </div>
   );
 }

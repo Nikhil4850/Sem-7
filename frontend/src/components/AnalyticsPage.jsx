@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { BASE_URL } from '../api';
 
 export default function AnalyticsPage({ token, onNavigate }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('http://localhost:8000/analytics/summary', {
+    fetch(`${BASE_URL}/api/analytics/summary`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
@@ -31,7 +32,7 @@ export default function AnalyticsPage({ token, onNavigate }) {
   const events = data ? data.event_counts || {} : {};
 
   return (
-    <div className="container" style={{ maxWidth: '1200px', margin: '30px auto', animation: 'fadeIn 0.4s ease' }}>
+    <div style={{ width: '100%', animation: 'fadeIn 0.4s ease' }}>
       
       {/* Top Banner */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
@@ -40,7 +41,7 @@ export default function AnalyticsPage({ token, onNavigate }) {
           <h2 style={{ fontSize: '1.8rem' }}>Institutional Integrity & AI Proctoring Analytics</h2>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
-          <button className="btn btn-outline" onClick={() => window.open('http://localhost:8000/exam/results/export/csv')}>
+          <button className="btn btn-outline" onClick={() => window.open(`${BASE_URL}/api/sessions/export/csv`)}>
             📥 Export CSV Report
           </button>
           <button className="btn btn-secondary" onClick={() => onNavigate('dashboard')}>
@@ -53,28 +54,28 @@ export default function AnalyticsPage({ token, onNavigate }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '32px' }}>
         <div className="card" style={{ padding: '24px' }}>
           <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', tracking: '1px' }}>Total Active Candidates</div>
-          <div style={{ fontSize: '2.4rem', fontWeight: 800, marginTop: '8px', color: 'var(--primary-color)' }}>{data?.total_candidates || 142}</div>
-          <div style={{ fontSize: '0.8rem', color: '#10b981', marginTop: '4px' }}>↑ +14% compared to last semester</div>
+          <div style={{ fontSize: '2.4rem', fontWeight: 800, marginTop: '8px', color: 'var(--primary-color)' }}>{data?.total_candidates ?? 0}</div>
+          <div style={{ fontSize: '0.8rem', color: '#10b981', marginTop: '4px' }}>Students with proctoring activity</div>
         </div>
 
         <div className="card" style={{ padding: '24px' }}>
           <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', tracking: '1px' }}>Total Proctor Logs Logged</div>
-          <div style={{ fontSize: '2.4rem', fontWeight: 800, marginTop: '8px', color: '#38bdf8' }}>{data?.total_logs || 892}</div>
+          <div style={{ fontSize: '2.4rem', fontWeight: 800, marginTop: '8px', color: '#38bdf8' }}>{data?.total_logs ?? 0}</div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>Across all computer vision nodes</div>
         </div>
 
         <div className="card" style={{ padding: '24px' }}>
           <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', tracking: '1px' }}>AI Detection Accuracy</div>
-          <div style={{ fontSize: '2.4rem', fontWeight: 800, marginTop: '8px', color: '#10b981' }}>{data?.ai_accuracy_rate || '99.8%'}</div>
+          <div style={{ fontSize: '2.4rem', fontWeight: 800, marginTop: '8px', color: '#10b981' }}>{data?.ai_accuracy_rate ?? '—'}</div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>YOLOv8 Small + CLAHE preprocessing</div>
         </div>
 
         <div className="card" style={{ padding: '24px' }}>
           <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', tracking: '1px' }}>Avg Suspicion Score</div>
-          <div style={{ fontSize: '2.4rem', fontWeight: 800, marginTop: '8px', color: (data?.avg_suspicion_score || 0) > 30 ? '#ef4444' : '#f59e0b' }}>
-            {data?.avg_suspicion_score || 18.4} <span style={{ fontSize: '1rem', fontWeight: 400 }}>/ 100</span>
+          <div style={{ fontSize: '2.4rem', fontWeight: 800, marginTop: '8px', color: (data?.avg_suspicion_score ?? 0) > 30 ? '#ef4444' : '#f59e0b' }}>
+            {data?.avg_suspicion_score ?? 0} <span style={{ fontSize: '1rem', fontWeight: 400 }}>/ 100</span>
           </div>
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>Institutional baseline: 25.0</div>
+          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>Across all exam sessions</div>
         </div>
       </div>
 
@@ -86,74 +87,59 @@ export default function AnalyticsPage({ token, onNavigate }) {
           <h3 style={{ fontSize: '1.1rem', marginBottom: '20px' }}>AI Breach Event Breakdown</h3>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', marginBottom: '6px' }}>
-                <span>📱 Smartphone / Mobile Devices</span>
-                <strong>{events['phone_detected'] || 14} events</strong>
+            {[
+              { key: 'phone_detected',  label: '📱 Smartphone / Mobile Devices',       color: '#ef4444' },
+              { key: 'tab_switch',      label: '🔄 Browser Tab Switch / Focus Loss',    color: '#f59e0b' },
+              { key: 'looking_away',    label: '👁️ Off-Screen Gaze (Looking Away)',     color: '#6366f1' },
+              { key: 'multiple_faces',  label: '👥 Multiple Persons in Camera Frame',   color: '#ec4899' },
+              { key: 'no_face',         label: '🚫 No Face Detected',                   color: '#8b5cf6' },
+            ].map(({ key, label, color }) => {
+              const count = events[key] || 0;
+              const total = Object.values(events).reduce((a, b) => a + b, 0) || 1;
+              const pct   = Math.round((count / total) * 100);
+              return (
+                <div key={key}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', marginBottom: '6px' }}>
+                    <span>{label}</span>
+                    <strong>{count} events</strong>
+                  </div>
+                  <div style={{ height: '8px', background: 'var(--bg-dark)', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ width: `${pct}%`, height: '100%', background: color, transition: 'width 0.5s ease' }} />
+                  </div>
+                </div>
+              );
+            })}
+            {Object.values(events).reduce((a, b) => a + b, 0) === 0 && (
+              <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', fontSize: '0.88rem' }}>
+                No violation events recorded yet.
               </div>
-              <div style={{ height: '8px', background: 'var(--bg-dark)', borderRadius: '4px', overflow: 'hidden' }}>
-                <div style={{ width: '45%', height: '100%', background: '#ef4444' }} />
-              </div>
-            </div>
-
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', marginBottom: '6px' }}>
-                <span>🔄 Browser Tab Switch / Focus Loss</span>
-                <strong>{events['tab_switch'] || 28} events</strong>
-              </div>
-              <div style={{ height: '8px', background: 'var(--bg-dark)', borderRadius: '4px', overflow: 'hidden' }}>
-                <div style={{ width: '65%', height: '100%', background: '#f59e0b' }} />
-              </div>
-            </div>
-
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', marginBottom: '6px' }}>
-                <span>👁️ Off-Screen Gaze (Looking Away)</span>
-                <strong>{events['looking_away'] || 42} events</strong>
-              </div>
-              <div style={{ height: '8px', background: 'var(--bg-dark)', borderRadius: '4px', overflow: 'hidden' }}>
-                <div style={{ width: '80%', height: '100%', background: '#6366f1' }} />
-              </div>
-            </div>
-
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', marginBottom: '6px' }}>
-                <span>👥 Multiple Persons in Camera Frame</span>
-                <strong>{events['multiple_faces'] || 6} events</strong>
-              </div>
-              <div style={{ height: '8px', background: 'var(--bg-dark)', borderRadius: '4px', overflow: 'hidden' }}>
-                <div style={{ width: '25%', height: '100%', background: '#ec4899' }} />
-              </div>
-            </div>
+            )}
           </div>
         </div>
 
-        {/* Hourly Peak Breach Timeline Chart Simulation */}
+        {/* Per-Event Daily Breakdown */}
         <div className="card" style={{ padding: '24px' }}>
-          <h3 style={{ fontSize: '1.1rem', marginBottom: '20px' }}>Hourly Peak Breach Distribution (24h)</h3>
-          
-          <div style={{ display: 'flex', alignItems: 'flex-end', height: '160px', gap: '12px', paddingBottom: '12px', borderBottom: '1px solid var(--border-color)' }}>
-            {[15, 20, 35, 80, 95, 60, 40, 70, 85, 30, 20, 10].map((h, i) => (
-              <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
-                <div style={{ width: '100%', height: `${h}%`, background: h > 75 ? '#ef4444' : h > 40 ? '#f59e0b' : '#6366f1', borderRadius: '4px 4px 0 0' }} />
-              </div>
-            ))}
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '8px' }}>
-            <span>08:00</span>
-            <span>10:00</span>
-            <span>12:00</span>
-            <span>14:00</span>
-            <span>16:00</span>
-            <span>18:00</span>
-          </div>
-
-          <div style={{ display: 'flex', gap: '16px', marginTop: '20px', fontSize: '0.8rem' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '10px', height: '10px', background: '#ef4444', borderRadius: '2px' }} /> High Risk Period</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '10px', height: '10px', background: '#f59e0b', borderRadius: '2px' }} /> Moderate Risk</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '10px', height: '10px', background: '#6366f1', borderRadius: '2px' }} /> Normal Baseline</span>
-          </div>
+          <h3 style={{ fontSize: '1.1rem', marginBottom: '20px' }}>Event Summary</h3>
+          {Object.keys(events).length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)', fontSize: '0.88rem' }}>
+              No events recorded yet.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {Object.entries(events).sort((a, b) => b[1] - a[1]).map(([key, count]) => {
+                const colors = { phone_detected:'#ef4444', tab_switch:'#f59e0b', looking_away:'#6366f1', multiple_faces:'#ec4899', no_face:'#8b5cf6' };
+                const icons  = { phone_detected:'📱', tab_switch:'🔄', looking_away:'👀', multiple_faces:'👥', no_face:'🚫' };
+                const color  = colors[key] || '#94a3b8';
+                return (
+                  <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', background: `${color}10`, borderRadius: '8px', border: `1px solid ${color}30` }}>
+                    <span style={{ fontSize: '1.2rem' }}>{icons[key] || '⚠️'}</span>
+                    <span style={{ flex: 1, fontSize: '0.88rem', color: 'var(--text-primary)', fontWeight: 500 }}>{key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span>
+                    <span style={{ fontSize: '1.1rem', fontWeight: 800, color }}>{count}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
       </div>

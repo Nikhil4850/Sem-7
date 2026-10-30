@@ -59,11 +59,11 @@ export default function PracticeLabPage({ onNavigate }) {
             Test your room lighting, webcam positioning, and test holding a smartphone to watch how the AI detection model responds live.
           </p>
 
-          <div style={{ position: 'relative', width: '100%', height: '300px', background: '#090d16', borderRadius: '8px', border: '1px solid var(--border-color)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px' }}>
+          <div style={{ position: 'relative', width: '100%', height: '300px', background: '#0f172a', borderRadius: '12px', border: '1px solid #cbd5e1', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px' }}>
             {!labActive ? (
-              <div style={{ textAlign: 'center' }}>
+              <div style={{ textAlign: 'center', color: '#fff' }}>
                 <div style={{ fontSize: '3rem', marginBottom: '12px' }}>🧪</div>
-                <button className="btn btn-primary" onClick={startSandbox}>Start Live Camera Test</button>
+                <button className="btn-primary" onClick={startSandbox}>Start Live Camera Test</button>
               </div>
             ) : (
               <>
@@ -88,7 +88,7 @@ export default function PracticeLabPage({ onNavigate }) {
           {/* Interactive AI Simulation Buttons */}
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
             <button 
-              className={`btn ${simulatedPhone ? 'btn-danger' : 'btn-outline'}`} 
+              className={`btn ${simulatedPhone ? 'btn-danger' : 'btn-secondary'}`} 
               onClick={() => setSimulatedPhone(!simulatedPhone)}
               disabled={!labActive}
             >
@@ -96,7 +96,7 @@ export default function PracticeLabPage({ onNavigate }) {
             </button>
 
             <button 
-              className={`btn ${simulatedLookAway ? 'btn-warning' : 'btn-outline'}`} 
+              className={`btn ${simulatedLookAway ? 'btn-warning' : 'btn-secondary'}`} 
               onClick={() => setSimulatedLookAway(!simulatedLookAway)}
               disabled={!labActive}
             >
@@ -107,21 +107,21 @@ export default function PracticeLabPage({ onNavigate }) {
 
         {/* Right Column: Diagnostic Quiz */}
         <div className="card" style={{ padding: '24px' }}>
-          <h3 style={{ fontSize: '1.1rem', marginBottom: '12px' }}>Practice Diagnostic Quiz</h3>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginBottom: '20px' }}>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a', marginBottom: '12px' }}>Practice Diagnostic Quiz</h3>
+          <p style={{ color: '#64748b', fontSize: '0.88rem', marginBottom: '20px' }}>
             Answer 3 sample questions to test answer selection, timer countdown, and instant scoring logic.
           </p>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '24px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
             {mockQuestions.map((q, qIdx) => (
-              <div key={q.id} style={{ background: 'var(--bg-dark)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                <strong style={{ fontSize: '0.92rem', display: 'block', marginBottom: '10px' }}>{qIdx + 1}. {q.q}</strong>
+              <div key={q.id} style={{ background: '#f8fafc', padding: '16px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                <strong style={{ fontSize: '0.92rem', color: '#0f172a', display: 'block', marginBottom: '10px' }}>{qIdx + 1}. {q.q}</strong>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                   {q.options.map((opt, oIdx) => (
                     <button
                       key={oIdx}
                       onClick={() => handleSelectOption(q.id, oIdx)}
-                      className={`btn ${selectedAnswers[q.id] === oIdx ? 'btn-primary' : 'btn-outline'}`}
+                      className={`btn ${selectedAnswers[q.id] === oIdx ? 'btn-primary' : 'btn-secondary'}`}
                       style={{ textAlign: 'left', padding: '8px 12px', fontSize: '0.82rem' }}
                     >
                       {opt}

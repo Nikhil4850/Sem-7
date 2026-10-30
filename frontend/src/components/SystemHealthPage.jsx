@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { BASE_URL } from '../api';
 
 export default function SystemHealthPage({ token, onNavigate }) {
   const [health, setHealth] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('http://localhost:8000/system/health', {
+    fetch(`${BASE_URL}/api/system/health`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
@@ -29,7 +30,7 @@ export default function SystemHealthPage({ token, onNavigate }) {
   }
 
   return (
-    <div className="container" style={{ maxWidth: '1150px', margin: '30px auto', animation: 'fadeIn 0.4s ease' }}>
+    <div style={{ width: '100%', animation: 'fadeIn 0.4s ease' }}>
       
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
@@ -45,26 +46,26 @@ export default function SystemHealthPage({ token, onNavigate }) {
         
         <div className="card" style={{ padding: '24px' }}>
           <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>FastAPI REST Latency</div>
-          <div style={{ fontSize: '2.4rem', fontWeight: 800, color: '#10b981', marginTop: '8px' }}>{health?.api_latency_ms || 14} ms</div>
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>Sub-20ms HTTP response speed</div>
+          <div style={{ fontSize: '2.4rem', fontWeight: 800, color: '#10b981', marginTop: '8px' }}>{health?.api_latency_ms ?? '—'} ms</div>
+          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>SQLite round-trip time</div>
         </div>
 
         <div className="card" style={{ padding: '24px' }}>
           <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>YOLOv8 Inference Latency</div>
-          <div style={{ fontSize: '2.4rem', fontWeight: 800, color: '#38bdf8', marginTop: '8px' }}>{health?.yolo_inference_ms || 18} ms</div>
+          <div style={{ fontSize: '2.4rem', fontWeight: 800, color: '#38bdf8', marginTop: '8px' }}>{health?.yolo_inference_ms ?? '—'} ms</div>
           <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>~55 FPS frame processing capacity</div>
         </div>
 
         <div className="card" style={{ padding: '24px' }}>
-          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Active WebSocket Sockets</div>
-          <div style={{ fontSize: '2.4rem', fontWeight: 800, color: 'var(--primary-color)', marginTop: '8px' }}>{health?.websocket_active_clients || 1} node</div>
-          <div style={{ fontSize: '0.8rem', color: '#10b981', marginTop: '4px' }}>Socket pool: Healthy</div>
+          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Active Exam Sessions</div>
+          <div style={{ fontSize: '2.4rem', fontWeight: 800, color: 'var(--primary-color)', marginTop: '8px' }}>{health?.websocket_active_clients ?? 0}</div>
+          <div style={{ fontSize: '0.8rem', color: '#10b981', marginTop: '4px' }}>Sessions currently in progress</div>
         </div>
 
         <div className="card" style={{ padding: '24px' }}>
           <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>CPU Load / Memory</div>
-          <div style={{ fontSize: '2.4rem', fontWeight: 800, color: '#f59e0b', marginTop: '8px' }}>{health?.cpu_usage_percent || 12.4}%</div>
-          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>RAM: {health?.memory_usage_percent || 34.2}% utilized</div>
+          <div style={{ fontSize: '2.4rem', fontWeight: 800, color: '#f59e0b', marginTop: '8px' }}>{health?.cpu_usage_percent ?? '—'}%</div>
+          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>RAM: {health?.memory_usage_percent ?? '—'}% utilized</div>
         </div>
 
       </div>

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { API } from '../api';
 
 export default function LoginPage({ onLogin }) {
   const [username, setUsername] = useState('');
@@ -14,20 +15,18 @@ export default function LoginPage({ onLogin }) {
     setLoading(true);
     setError('');
     try {
-      const formData = new URLSearchParams();
-      formData.append('username', username);
-      formData.append('password', password);
-      const res  = await fetch('http://localhost:8000/login', {
+      const res  = await fetch(API.login, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.detail || 'Login failed'); setLoading(false); return; }
-      localStorage.setItem('token',    data.access_token);
+      if (!res.ok) { setError(data.detail || data.message || 'Login failed'); setLoading(false); return; }
+      const token = data.token || data.access_token;
+      localStorage.setItem('token',    token);
       localStorage.setItem('role',     data.role);
-      localStorage.setItem('username', data.username);
-      onLogin(data);
+      localStorage.setItem('username', data.username || username);
+      onLogin({ ...data, token });
     } catch {
       setError('Cannot reach backend. Is the server running?');
     }
@@ -161,24 +160,7 @@ export default function LoginPage({ onLogin }) {
           ) : 'Sign In →'}
         </button>
 
-        {/* Demo accounts */}
-        <div style={{
-          marginTop: '24px',
-          padding: '16px',
-          background: 'rgba(0,0,0,0.2)',
-          borderRadius: '10px',
-          border: '1px solid var(--border)',
-        }}>
-          <div style={{
-            fontSize: '11px', color: 'var(--text-muted)',
-            fontWeight: '700', textTransform: 'uppercase',
-            letterSpacing: '0.06em', marginBottom: '8px'
-          }}>Demo Accounts</div>
-          <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.8' }}>
-            <span style={{ color: '#60a5fa' }}>👤 student1</span> / admin123 → Exam<br/>
-            <span style={{ color: '#a78bfa' }}>🔑 admin</span> / admin123 → Dashboard
-          </div>
-        </div>
+
       </div>
     </div>
   );

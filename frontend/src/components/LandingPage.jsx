@@ -1,182 +1,712 @@
 import React from 'react';
-import { coursesData, eventsData } from '../data/eduData';
 
 export default function LandingPage({ onNavigate, onOpenAuth }) {
   return (
-    <div style={{ minHeight: '100vh', background: '#080c14', color: '#f1f5f9', position: 'relative' }}>
+    <div style={{
+      width: '100%',
+      minHeight: '100vh',
+      background: 'linear-gradient(180deg, #f0f7ff 0%, #ffffff 32%, #ffffff 100%)',
+      color: '#0f172a',
+      fontFamily: "'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+      position: 'relative',
+      margin: 0,
+      padding: 0,
+      overflowX: 'hidden'
+    }}>
 
       {/* Hero Section */}
-      <section style={{ padding: '40px 24px 80px', textAlign: 'center', maxWidth: '1150px', margin: '0 auto' }}>
-        <div style={{
-          display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 18px',
-          borderRadius: '30px', background: 'rgba(99, 102, 241, 0.15)', border: '1px solid rgba(99, 102, 241, 0.3)',
-          color: '#818cf8', fontSize: '0.85rem', fontWeight: 600, marginBottom: '24px'
-        }}>
-          ✨ Next-Gen Educational Institution & Real-Time AI Anti-Cheating Guardian
+      <section style={{
+        maxWidth: '1440px',
+        margin: '0 auto',
+        padding: '40px 32px 60px',
+        display: 'grid',
+        gridTemplateColumns: '1.15fr 1fr',
+        alignItems: 'center',
+        gap: '40px'
+      }}>
+
+
+        {/* Hero Left Content */}
+        <div>
+          {/* AI-Powered Tag Pill */}
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '6px 16px',
+            borderRadius: '9999px',
+            background: '#e0edff',
+            border: '1px solid #bfdbfe',
+            color: '#0066ff',
+            fontSize: '0.85rem',
+            fontWeight: 600,
+            marginBottom: '20px'
+          }}>
+            <span style={{ fontSize: '8px' }}>●</span>
+            <span>AI-Powered • Secure • Fair</span>
+          </div>
+
+          {/* Heading */}
+          <h1 style={{
+            fontSize: '3.6rem',
+            fontWeight: 800,
+            lineHeight: 1.15,
+            color: '#0f172a',
+            marginBottom: '20px',
+            letterSpacing: '-0.02em'
+          }}>
+            Smart Online <br />
+            <span style={{ color: '#0066ff' }}>Exam Proctoring</span> System
+          </h1>
+
+          {/* Subtitle */}
+          <p style={{
+            fontSize: '1.1rem',
+            color: '#64748b',
+            lineHeight: 1.65,
+            maxWidth: '510px',
+            marginBottom: '32px'
+          }}>
+            Ensure a fair and secure examination environment with AI-powered monitoring, real-time detection, and detailed reports.
+          </p>
+
+          {/* CTA Buttons */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '36px', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => onOpenAuth('student')}
+              style={{
+                background: '#0066ff',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '10px',
+                padding: '14px 28px',
+                fontSize: '1rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: '0 6px 18px rgba(0, 102, 255, 0.3)',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+              onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
+            >
+              <span>Start an Exam</span>
+              <span style={{ fontSize: '1.1rem' }}>→</span>
+            </button>
+
+            <button
+              onClick={() => onNavigate('features')}
+              style={{
+                background: '#ffffff',
+                color: '#0066ff',
+                border: '1.5px solid #cbd5e1',
+                borderRadius: '10px',
+                padding: '13px 28px',
+                fontSize: '1rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseOver={e => {
+                e.currentTarget.style.borderColor = '#0066ff';
+                e.currentTarget.style.background = '#f8faff';
+              }}
+              onMouseOut={e => {
+                e.currentTarget.style.borderColor = '#cbd5e1';
+                e.currentTarget.style.background = '#ffffff';
+              }}
+            >
+              Learn More
+            </button>
+          </div>
+
+          {/* Feature Checkmarks Row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '28px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#334155', fontSize: '0.92rem', fontWeight: 600 }}>
+              <span style={{ color: '#0066ff', fontSize: '1.1rem' }}>✓</span>
+              <span>AI Monitoring</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#334155', fontSize: '0.92rem', fontWeight: 600 }}>
+              <span style={{ color: '#0066ff', fontSize: '1.1rem' }}>✓</span>
+              <span>Real-time Detection</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#334155', fontSize: '0.92rem', fontWeight: 600 }}>
+              <span style={{ color: '#0066ff', fontSize: '1.1rem' }}>✓</span>
+              <span>Detailed Reports</span>
+            </div>
+          </div>
         </div>
 
-        <h1 style={{ fontSize: '3.6rem', fontWeight: 800, lineHeight: 1.15, marginBottom: '24px' }}>
-          Empowering Global Learning with <br />
-          <span style={{ background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            Accredited Degrees & AI Proctoring
-          </span>
-        </h1>
+        {/* Hero Right Visual Graphic with Live Overlays */}
+        <div style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '520px' }}>
+          
+          {/* Radial ambient glow behind candidate */}
+          <div style={{
+            position: 'absolute',
+            width: '460px',
+            height: '460px',
+            borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(199, 210, 254, 0.45) 0%, rgba(224, 231, 255, 0.2) 50%, transparent 70%)',
+            pointerEvents: 'none',
+            zIndex: 0
+          }} />
 
-        <p style={{ fontSize: '1.15rem', color: '#94a3b8', maxWidth: '780px', margin: '0 auto 40px', lineHeight: 1.7 }}>
-          A complete educational platform offering 12+ accredited degree courses, interactive quizzes, faculty research, and military-grade real-time AI examination proctoring powered by YOLOv8, MediaPipe 3D Mesh, and OpenCV.
-        </p>
+          {/* Dotted orbital trajectory */}
+          <svg style={{ position: 'absolute', width: '520px', height: '480px', pointerEvents: 'none', zIndex: 1 }} viewBox="0 0 520 480">
+            <path
+              d="M 40,240 C 60,60 460,50 480,240"
+              fill="none"
+              stroke="#93c5fd"
+              strokeWidth="2"
+              strokeDasharray="6,6"
+            />
+          </svg>
 
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', flexWrap: 'wrap', marginBottom: '60px' }}>
-          <button className="next-btn" style={{ padding: '14px 32px', fontSize: '1rem' }} onClick={() => onNavigate('courses')}>
-            📚 Explore 12+ Courses
-          </button>
-          <button className="nav-btn" style={{ padding: '14px 32px', fontSize: '1rem' }} onClick={() => onOpenAuth('student')}>
-            🎓 Launch Proctored Exam
-          </button>
-          <button className="nav-btn" style={{ padding: '14px 32px', fontSize: '1rem', borderColor: '#8b5cf6', color: '#c084fc' }} onClick={() => onNavigate('features')}>
-            👁️ AI Proctoring Tech Demo
-          </button>
+          {/* Main Student Image */}
+          <div style={{
+            position: 'relative',
+            width: '380px',
+            height: '460px',
+            borderRadius: '24px',
+            overflow: 'visible',
+            zIndex: 2,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <img
+              src="/student_proctor_hero.png"
+              alt="Student Taking Proctored Exam"
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                borderRadius: '24px',
+                boxShadow: '0 16px 40px rgba(0, 102, 255, 0.12)'
+              }}
+              onError={(e) => {
+                // Graceful fallback if image path takes a moment
+                e.target.style.background = '#e2e8f0';
+              }}
+            />
+
+            {/* Green Face Detection Bounding Box Overlay */}
+            <div style={{
+              position: 'absolute',
+              top: '80px',
+              left: '125px',
+              width: '130px',
+              height: '150px',
+              border: '2.5px solid #22c55e',
+              borderRadius: '8px',
+              boxShadow: '0 0 15px rgba(34, 197, 94, 0.3)',
+              pointerEvents: 'none',
+              zIndex: 10
+            }}>
+              {/* Corner tick marks */}
+              <div style={{ position: 'absolute', top: '-4px', left: '-4px', width: '10px', height: '10px', borderTop: '3px solid #22c55e', borderLeft: '3px solid #22c55e' }} />
+              <div style={{ position: 'absolute', top: '-4px', right: '-4px', width: '10px', height: '10px', borderTop: '3px solid #22c55e', borderRight: '3px solid #22c55e' }} />
+              <div style={{ position: 'absolute', bottom: '-4px', left: '-4px', width: '10px', height: '10px', borderBottom: '3px solid #22c55e', borderLeft: '3px solid #22c55e' }} />
+              <div style={{ position: 'absolute', bottom: '-4px', right: '-4px', width: '10px', height: '10px', borderBottom: '3px solid #22c55e', borderRight: '3px solid #22c55e' }} />
+
+              {/* Green Face Detected Pill below chin */}
+              <div style={{
+                position: 'absolute',
+                bottom: '-28px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                background: '#22c55e',
+                color: '#ffffff',
+                padding: '3px 12px',
+                borderRadius: '9999px',
+                fontSize: '11px',
+                fontWeight: 700,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                whiteSpace: 'nowrap',
+                boxShadow: '0 4px 10px rgba(34, 197, 94, 0.3)'
+              }}>
+                <span>✓</span>
+                <span>Face Detected</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Overlay Card 1: Top-Left (Multiple People Not Detected) */}
+          <div style={{
+            position: 'absolute',
+            top: '20px',
+            left: '-20px',
+            background: '#ffffff',
+            borderRadius: '14px',
+            padding: '10px 14px',
+            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.08)',
+            border: '1px solid #f1f5f9',
+            zIndex: 12,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <div style={{
+              width: '84px',
+              height: '48px',
+              background: '#f1f5f9',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.4rem'
+            }}>
+              👥
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 600, color: '#1e293b' }}>
+              <span style={{ color: '#22c55e' }}>✓</span>
+              <span>Multiple People Not Detected</span>
+            </div>
+          </div>
+
+          {/* Overlay Card 2: Bottom-Left (Mobile Phone Not Detected) */}
+          <div style={{
+            position: 'absolute',
+            top: '200px',
+            left: '-30px',
+            background: '#ffffff',
+            borderRadius: '14px',
+            padding: '10px 14px',
+            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.08)',
+            border: '1px solid #f1f5f9',
+            zIndex: 12,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <div style={{
+              width: '84px',
+              height: '48px',
+              background: '#f1f5f9',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.4rem'
+            }}>
+              📱
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 600, color: '#1e293b' }}>
+              <span style={{ color: '#22c55e' }}>✓</span>
+              <span>Mobile Phone Not Detected</span>
+            </div>
+          </div>
+
+          {/* Overlay Card 3: Top-Right (Looking at Screen) */}
+          <div style={{
+            position: 'absolute',
+            top: '20px',
+            right: '-15px',
+            background: '#ffffff',
+            borderRadius: '14px',
+            padding: '8px 12px',
+            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.08)',
+            border: '1px solid #f1f5f9',
+            zIndex: 12,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '6px'
+          }}>
+            <img
+              src="/eyes_screen_closeup.png"
+              alt="Looking at screen"
+              style={{
+                width: '105px',
+                height: '46px',
+                borderRadius: '6px',
+                objectFit: 'cover'
+              }}
+              onError={(e) => {
+                e.target.style.display = 'none';
+              }}
+            />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 600, color: '#1e293b' }}>
+              <span style={{ color: '#22c55e' }}>✓</span>
+              <span>Looking at Screen</span>
+            </div>
+          </div>
+
+          {/* Overlay Card 4: Middle-Right (Tab Switch Not Detected) */}
+          <div style={{
+            position: 'absolute',
+            top: '160px',
+            right: '-25px',
+            background: '#ffffff',
+            borderRadius: '14px',
+            padding: '8px 12px',
+            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.08)',
+            border: '1px solid #f1f5f9',
+            zIndex: 12,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '6px'
+          }}>
+            <div style={{
+              width: '105px',
+              height: '46px',
+              borderRadius: '6px',
+              background: '#0f172a',
+              display: 'flex',
+              flexDirection: 'column',
+              padding: '4px 6px',
+              gap: '3px'
+            }}>
+              <div style={{ display: 'flex', gap: '3px' }}>
+                <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#ef4444' }} />
+                <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#f59e0b' }} />
+                <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10b981' }} />
+              </div>
+              <div style={{ height: '4px', background: '#334155', borderRadius: '2px', width: '60%' }} />
+              <div style={{ height: '4px', background: '#334155', borderRadius: '2px', width: '80%' }} />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: 600, color: '#1e293b' }}>
+              <span style={{ color: '#22c55e' }}>✓</span>
+              <span>Tab Switch Not Detected</span>
+            </div>
+          </div>
+
+          {/* Overlay Card 5: Bottom-Right (Attention Level 92% Widget) */}
+          <div style={{
+            position: 'absolute',
+            bottom: '15px',
+            right: '-40px',
+            background: '#ffffff',
+            borderRadius: '16px',
+            padding: '14px 18px',
+            boxShadow: '0 14px 30px rgba(0, 0, 0, 0.1)',
+            border: '1px solid #f1f5f9',
+            zIndex: 15
+          }}>
+            <div style={{ fontSize: '12px', color: '#475569', fontWeight: 600, marginBottom: '8px' }}>
+              Attention Level
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              {/* Radial Progress Gauge (92%) */}
+              <div style={{ position: 'relative', width: '54px', height: '54px' }}>
+                <svg width="54" height="54" viewBox="0 0 54 54">
+                  <circle cx="27" cy="27" r="22" fill="none" stroke="#e2e8f0" strokeWidth="4" />
+                  <circle
+                    cx="27" cy="27" r="22"
+                    fill="none"
+                    stroke="#0066ff"
+                    strokeWidth="4"
+                    strokeDasharray="138.2"
+                    strokeDashoffset="11"
+                    strokeLinecap="round"
+                    transform="rotate(-90 27 27)"
+                  />
+                </svg>
+                <div style={{
+                  position: 'absolute',
+                  inset: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '13px',
+                  fontWeight: 800,
+                  color: '#0f172a'
+                }}>
+                  92%
+                </div>
+              </div>
+
+              {/* Sparkline curve */}
+              <div style={{ width: '70px', height: '34px' }}>
+                <svg width="70" height="34" viewBox="0 0 70 34" fill="none">
+                  <path
+                    d="M 2,24 C 15,10 25,28 40,14 C 52,2 60,18 68,12"
+                    stroke="#93c5fd"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M 2,24 C 15,10 25,28 40,14 C 52,2 60,18 68,12 L 68,34 L 2,34 Z"
+                    fill="rgba(199, 210, 254, 0.3)"
+                  />
+                </svg>
+              </div>
+            </div>
+          </div>
+
         </div>
 
-        {/* Global Statistics Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
-          <div className="glass" style={{ padding: '24px', textAlign: 'center' }}>
-            <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#818cf8' }}>50,000+</div>
-            <div style={{ fontSize: '0.85rem', color: '#94a3b8', marginTop: '4px' }}>Enrolled Students</div>
-          </div>
-          <div className="glass" style={{ padding: '24px', textAlign: 'center' }}>
-            <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#34d399' }}>99.8%</div>
-            <div style={{ fontSize: '0.85rem', color: '#94a3b8', marginTop: '4px' }}>AI Anti-Cheating Accuracy</div>
-          </div>
-          <div className="glass" style={{ padding: '24px', textAlign: 'center' }}>
-            <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#f472b6' }}>1,200+</div>
-            <div style={{ fontSize: '0.85rem', color: '#94a3b8', marginTop: '4px' }}>Secured Examinations</div>
-          </div>
-          <div className="glass" style={{ padding: '24px', textAlign: 'center' }}>
-            <div style={{ fontSize: '2.5rem', fontWeight: 800, color: '#fbbf24' }}>4.9 ★</div>
-            <div style={{ fontSize: '0.85rem', color: '#94a3b8', marginTop: '4px' }}>Institution Rating</div>
-          </div>
-        </div>
       </section>
 
-      {/* Signature AI Proctoring Feature Section */}
-      <section style={{ padding: '80px 24px', background: 'rgba(15, 23, 42, 0.5)' }}>
-        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', maxWidth: '650px', margin: '0 auto 50px' }}>
-            <span style={{ color: '#818cf8', fontWeight: 700, fontSize: '0.85rem', letterSpacing: '1px' }}>CORE PLATFORM FEATURE</span>
-            <h2 style={{ fontSize: '2.4rem', marginTop: '8px' }}>AI-Powered Anti-Cheating Guardian</h2>
-            <p style={{ color: '#94a3b8', marginTop: '12px' }}>
-              Multi-algorithm computer vision engine monitoring examinations live without human fatigue.
+      {/* 4 Feature Cards Grid */}
+      <section style={{
+        maxWidth: '1440px',
+        margin: '20px auto 48px',
+        padding: '0 32px'
+      }}>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gap: '24px'
+        }}>
+
+          {/* Card 1: AI Monitoring */}
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '20px',
+            border: '1px solid #eef2f6',
+            padding: '32px 24px',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.03)',
+            transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+          }}>
+            <div style={{
+              width: '52px',
+              height: '52px',
+              borderRadius: '50%',
+              background: '#eff6ff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#0066ff',
+              fontSize: '1.4rem'
+            }}>
+              📹
+            </div>
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#0f172a', margin: '18px 0 8px' }}>
+              AI Monitoring
+            </h3>
+            <p style={{ fontSize: '0.9rem', color: '#64748b', lineHeight: 1.6, margin: 0 }}>
+              Real-time face, eye, and behavior monitoring using advanced AI models.
             </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '28px' }}>
-            <div className="glass" style={{ padding: '32px' }}>
-              <div style={{ fontSize: '2rem', marginBottom: '16px' }}>📱</div>
-              <h3 style={{ fontSize: '1.3rem', marginBottom: '10px' }}>YOLOv8 Phone & Device Detector</h3>
-              <p style={{ color: '#94a3b8', fontSize: '0.9rem', lineHeight: 1.6 }}>
-                Uses Ultralytics YOLOv8 Small model (`yolov8s.pt`) with CLAHE contrast preprocessing to detect mobile phones, secondary screens, or notes.
-              </p>
+          {/* Card 2: Cheating Detection */}
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '20px',
+            border: '1px solid #eef2f6',
+            padding: '32px 24px',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.03)',
+            transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+          }}>
+            <div style={{
+              width: '52px',
+              height: '52px',
+              borderRadius: '50%',
+              background: '#ecfdf5',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#10b981',
+              fontSize: '1.4rem'
+            }}>
+              🛡️
             </div>
-
-            <div className="glass" style={{ padding: '32px' }}>
-              <div style={{ fontSize: '2rem', marginBottom: '16px' }}>👁️</div>
-              <h3 style={{ fontSize: '1.3rem', marginBottom: '10px' }}>MediaPipe Gaze & Pose Tracking</h3>
-              <p style={{ color: '#94a3b8', fontSize: '0.9rem', lineHeight: 1.6 }}>
-                Extracts 468 3D facial landmarks to detect if student turns head or looks away left, right, up, or down from the screen.
-              </p>
-            </div>
-
-            <div className="glass" style={{ padding: '32px' }}>
-              <div style={{ fontSize: '2rem', marginBottom: '16px' }}>👥</div>
-              <h3 style={{ fontSize: '1.3rem', marginBottom: '10px' }}>Multi-Person & Absence Detector</h3>
-              <p style={{ color: '#94a3b8', fontSize: '0.9rem', lineHeight: 1.6 }}>
-                Monitors single student presence and alerts immediately if multiple faces or 0 faces are detected in the field of view.
-              </p>
-            </div>
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#0f172a', margin: '18px 0 8px' }}>
+              Cheating Detection
+            </h3>
+            <p style={{ fontSize: '0.9rem', color: '#64748b', lineHeight: 1.6, margin: 0 }}>
+              Detects multiple people, mobile phones, suspicious objects and unusual activities.
+            </p>
           </div>
-        </div>
-      </section>
 
-      {/* Featured Courses Grid Section */}
-      <section style={{ padding: '80px 24px', maxWidth: '1150px', margin: '0 auto' }}>
-        <div style={{ textAlign: 'center', marginBottom: '50px' }}>
-          <h2 style={{ fontSize: '2.2rem' }}>Featured Academic Degrees</h2>
-          <p style={{ color: '#94a3b8', marginTop: '8px' }}>Select an academic degree course to view syllabus and launch AI-proctored certification assessments.</p>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '28px' }}>
-          {coursesData.slice(0, 3).map(course => (
-            <div key={course.id} className="glass" style={{ padding: '24px', display: 'flex', flexDirection: 'column' }}>
-              <span style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', padding: '4px 10px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 600, width: 'fit-content', marginBottom: '12px' }}>
-                {course.categoryLabel}
-              </span>
-              <h3 style={{ fontSize: '1.25rem', marginBottom: '8px' }}>{course.title}</h3>
-              <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '20px', flex: 1, lineHeight: 1.6 }}>{course.desc}</p>
-              <button className="next-btn" style={{ width: '100%' }} onClick={() => onOpenAuth('student')}>Enroll & Take Exam</button>
+          {/* Card 3: Exam Analytics */}
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '20px',
+            border: '1px solid #eef2f6',
+            padding: '32px 24px',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.03)',
+            transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+          }}>
+            <div style={{
+              width: '52px',
+              height: '52px',
+              borderRadius: '50%',
+              background: '#f5f3ff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#8b5cf6',
+              fontSize: '1.4rem'
+            }}>
+              📊
             </div>
-          ))}
-        </div>
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#0f172a', margin: '18px 0 8px' }}>
+              Exam Analytics
+            </h3>
+            <p style={{ fontSize: '0.9rem', color: '#64748b', lineHeight: 1.6, margin: 0 }}>
+              Detailed reports and risk analysis for each exam attempt.
+            </p>
+          </div>
 
-        <div style={{ textAlign: 'center', marginTop: '40px' }}>
-          <button className="nav-btn" style={{ padding: '12px 28px' }} onClick={() => onNavigate('courses')}>
-            View All 12+ Academic Courses →
-          </button>
+          {/* Card 4: Secure & Reliable */}
+          <div style={{
+            background: '#ffffff',
+            borderRadius: '20px',
+            border: '1px solid #eef2f6',
+            padding: '32px 24px',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.03)',
+            transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+          }}>
+            <div style={{
+              width: '52px',
+              height: '52px',
+              borderRadius: '50%',
+              background: '#fef2f2',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#ef4444',
+              fontSize: '1.4rem'
+            }}>
+              🔒
+            </div>
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#0f172a', margin: '18px 0 8px' }}>
+              Secure & Reliable
+            </h3>
+            <p style={{ fontSize: '0.9rem', color: '#64748b', lineHeight: 1.6, margin: 0 }}>
+              Prevent tab switching, copy-paste and other unfair means.
+            </p>
+          </div>
+
         </div>
       </section>
 
-      {/* Upcoming Events Preview */}
-      <section style={{ padding: '60px 24px', background: 'rgba(15, 23, 42, 0.4)', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
-        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-          <h2 style={{ fontSize: '1.8rem', textAlign: 'center', marginBottom: '32px' }}>📅 Academic Symposiums & Live Events</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
-            {eventsData.map((evt, idx) => (
-              <div key={idx} className="glass" style={{ padding: '20px' }}>
-                <span className="pill pill-green" style={{ marginBottom: '10px', display: 'inline-block' }}>{evt.tag}</span>
-                <h3 style={{ fontSize: '1.1rem', marginBottom: '6px' }}>{evt.title}</h3>
-                <p style={{ color: '#94a3b8', fontSize: '0.85rem' }}>Keynote: {evt.speaker} • {evt.date}</p>
+      {/* Bottom Statistics Bar */}
+      <section style={{
+        maxWidth: '1440px',
+        margin: '0 auto 60px',
+        padding: '0 32px'
+      }}>
+
+        <div style={{
+          background: '#f8fafd',
+          borderRadius: '20px',
+          border: '1px solid #edf2f7',
+          padding: '28px 48px',
+          display: 'grid',
+          gridTemplateColumns: '1fr auto 1fr auto 1fr auto 1fr',
+          alignItems: 'center'
+        }}>
+
+          {/* Stat 1: 10K+ Students Monitored */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{
+              width: '46px',
+              height: '46px',
+              borderRadius: '50%',
+              background: '#eff6ff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.4rem',
+              color: '#0066ff'
+            }}>
+              👥
+            </div>
+            <div>
+              <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#0066ff', lineHeight: 1 }}>
+                10K+
               </div>
-            ))}
+              <div style={{ fontSize: '0.88rem', color: '#64748b', marginTop: '4px' }}>
+                Students Monitored
+              </div>
+            </div>
           </div>
+
+          <div style={{ width: '1px', height: '44px', background: '#e2e8f0' }} />
+
+          {/* Stat 2: 500+ Exams Conducted */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{
+              width: '46px',
+              height: '46px',
+              borderRadius: '50%',
+              background: '#ecfdf5',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.4rem',
+              color: '#10b981'
+            }}>
+              📄
+            </div>
+            <div>
+              <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#10b981', lineHeight: 1 }}>
+                500+
+              </div>
+              <div style={{ fontSize: '0.88rem', color: '#64748b', marginTop: '4px' }}>
+                Exams Conducted
+              </div>
+            </div>
+          </div>
+
+          <div style={{ width: '1px', height: '44px', background: '#e2e8f0' }} />
+
+          {/* Stat 3: 98% Detection Accuracy */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{
+              width: '46px',
+              height: '46px',
+              borderRadius: '50%',
+              background: '#f5f3ff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.4rem',
+              color: '#8b5cf6'
+            }}>
+              🛡️
+            </div>
+            <div>
+              <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#8b5cf6', lineHeight: 1 }}>
+                98%
+              </div>
+              <div style={{ fontSize: '0.88rem', color: '#64748b', marginTop: '4px' }}>
+                Detection Accuracy
+              </div>
+            </div>
+          </div>
+
+          <div style={{ width: '1px', height: '44px', background: '#e2e8f0' }} />
+
+          {/* Stat 4: 24/7 Secure Monitoring */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{
+              width: '46px',
+              height: '46px',
+              borderRadius: '50%',
+              background: '#fef2f2',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.4rem',
+              color: '#ef4444'
+            }}>
+              🕒
+            </div>
+            <div>
+              <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#ef4444', lineHeight: 1 }}>
+                24/7
+              </div>
+              <div style={{ fontSize: '0.88rem', color: '#64748b', marginTop: '4px' }}>
+                Secure Monitoring
+              </div>
+            </div>
+          </div>
+
         </div>
       </section>
-
-      {/* Multi-Column Comprehensive Footer */}
-      <footer style={{ borderTop: '1px solid rgba(255, 255, 255, 0.08)', padding: '60px 24px 30px', color: '#64748b', fontSize: '0.88rem' }}>
-        <div style={{ maxWidth: '1150px', margin: '0 auto', display: 'grid', gridTemplateColumns: '2fr repeat(3, 1fr)', gap: '40px', marginBottom: '40px' }}>
-          <div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#fff', marginBottom: '12px' }}>EduVanguard University</div>
-            <p style={{ color: '#94a3b8', lineHeight: 1.6 }}>Accredited online educational platform featuring real-time AI examination proctoring, neural computer vision guardians, and global academic certification.</p>
-          </div>
-          <div>
-            <h4 style={{ color: '#fff', marginBottom: '12px' }}>Portals</h4>
-            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <li><button style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }} onClick={() => onOpenAuth('student')}>Student Portal</button></li>
-              <li><button style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }} onClick={() => onOpenAuth('teacher')}>Teacher / Admin Hub</button></li>
-              <li><button style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }} onClick={() => onNavigate('certificates')}>Verify Credentials</button></li>
-            </ul>
-          </div>
-          <div>
-            <h4 style={{ color: '#fff', marginBottom: '12px' }}>Academics</h4>
-            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <li><button style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }} onClick={() => onNavigate('courses')}>Course Directory</button></li>
-              <li><button style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }} onClick={() => onNavigate('departments')}>University Departments</button></li>
-              <li><button style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }} onClick={() => onNavigate('schedule')}>Academic Schedule</button></li>
-            </ul>
-          </div>
-          <div>
-            <h4 style={{ color: '#fff', marginBottom: '12px' }}>AI Technology</h4>
-            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <li><button style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }} onClick={() => onNavigate('features')}>YOLOv8 Phone Detector</button></li>
-              <li><button style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }} onClick={() => onNavigate('features')}>MediaPipe 3D Mesh</button></li>
-              <li><button style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }} onClick={() => onNavigate('faq')}>Help Desk & FAQ</button></li>
-            </ul>
-          </div>
-        </div>
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '20px', textAlign: 'center' }}>
-          © 2026 EduVanguard Platform. All rights reserved. Powered by YOLOv8s, MediaPipe & FastAPI.
-        </div>
-      </footer>
 
     </div>
   );
