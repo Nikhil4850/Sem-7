@@ -143,9 +143,9 @@ export default function TeacherDashboard({ token, onNavigate }) {
   }, [fetchAll]);
 
   /* Derived values */
-  const activeExams  = exams.filter(e => e.isActive);
+  const activeExams  = exams.filter(e => e.IsActive || e.isActive);
   const ongoingExam  = activeExams[0] || null;
-  const students     = users.filter(u => u.role === 'student');
+  const students     = users.filter(u => (u.role || u.Role || '').toLowerCase() === 'student');
   const todayLogs    = logs.filter(l => {
     const d = new Date(l.timestamp || l.createdAt);
     const n = new Date();
@@ -158,9 +158,12 @@ export default function TeacherDashboard({ token, onNavigate }) {
   /* Build exam end time from startTime + durationMinutes */
   function getEndTime(exam) {
     if (!exam) return null;
-    if (exam.endTime) return exam.endTime;
-    if (exam.startTime && exam.durationMinutes) {
-      return new Date(new Date(exam.startTime).getTime() + exam.durationMinutes * 60000).toISOString();
+    const endTime = exam.endTime || exam.EndTime;
+    if (endTime) return endTime;
+    const startTime = exam.startTime || exam.StartTime;
+    const duration  = exam.durationMinutes || exam.DurationMinutes;
+    if (startTime && duration) {
+      return new Date(new Date(startTime).getTime() + duration * 60000).toISOString();
     }
     return null;
   }
@@ -292,9 +295,9 @@ export default function TeacherDashboard({ token, onNavigate }) {
               {/* Exam info grid */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0', marginBottom: '22px' }}>
                 {[
-                  { label: 'Course Code',    value: ongoingExam.courseCode || ongoingExam.examId?.substring(0,6).toUpperCase() || 'N/A' },
+                  { label: 'Course Code',    value: ongoingExam.courseCode || `EXAM-${String(ongoingExam.examId || ongoingExam.ExamId || '').slice(0,6).toUpperCase()}` || 'N/A' },
                   { label: 'Total Students', value: students.length || '—' },
-                  { label: 'Start Time',     value: fmt12(ongoingExam.startTime || ongoingExam.scheduledAt) },
+                  { label: 'Start Time',     value: fmt12(ongoingExam.startTime || ongoingExam.StartTime || ongoingExam.scheduledAt) },
                   { label: 'End Time',       value: fmt12(getEndTime(ongoingExam)) },
                 ].map((row, i) => (
                   <div key={i} style={{
@@ -490,7 +493,7 @@ export default function TeacherDashboard({ token, onNavigate }) {
           </h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
             {activeExams.slice(1).map((ex, i) => (
-              <div key={ex.examId || i} style={{
+              <div key={ex.examId || ex.ExamId || i} style={{
                 display: 'flex', alignItems: 'center', gap: '12px',
                 padding: '12px 14px', borderRadius: '10px',
                 background: '#f8fafc', border: '1px solid #e8edf2',
@@ -506,7 +509,7 @@ export default function TeacherDashboard({ token, onNavigate }) {
                     {ex.title || ex.examTitle}
                   </div>
                   <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>
-                    ⏱ {ex.durationMinutes} min · {ex.totalMarks} marks
+                    ⏱ {ex.durationMinutes || ex.DurationMinutes} min · {ex.totalMarks || ex.TotalMarks} marks
                   </div>
                 </div>
                 <span style={{

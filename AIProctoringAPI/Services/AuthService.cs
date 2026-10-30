@@ -14,7 +14,11 @@ public class AuthService : IAuthService
 
     // Roles permitted to be assigned by an administrator
     private static readonly HashSet<string> AllowedRoles = new(StringComparer.OrdinalIgnoreCase)
-        { "student", "administrator" };
+        { "student", "teacher", "administrator" };
+
+    // Roles that can perform role changes
+    private static readonly HashSet<string> AdminRoles = new(StringComparer.OrdinalIgnoreCase)
+        { "admin", "administrator" };
 
     public AuthService(DatabaseHelper db, IJwtService jwt, IConfiguration config, ILogger<AuthService> logger)
     {
@@ -114,12 +118,12 @@ public class AuthService : IAuthService
 
     public async Task<(bool Success, string Message)> UpdateUserRoleAsync(string username, string role, string requestingUserRole)
     {
-        // Only administrators can assign roles; students cannot elevate themselves
-        if (!requestingUserRole.Equals("administrator", StringComparison.OrdinalIgnoreCase))
+        // Only administrators can assign roles
+        if (!AdminRoles.Contains(requestingUserRole))
             return (false, "Only administrators can change roles.");
 
         if (!AllowedRoles.Contains(role))
-            return (false, $"Invalid role '{role}'. Allowed values: student, administrator.");
+            return (false, $"Invalid role '{role}'. Allowed values: student, teacher, administrator.");
 
         try
         {

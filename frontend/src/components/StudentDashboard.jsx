@@ -93,8 +93,9 @@ export default function StudentDashboard({ user, token, onStartExam, onNavigate 
   const [logs,     setLogs]     = useState([]);
   const [results,  setResults]  = useState([]);
   const [loading,  setLoading]  = useState(true);
-  const [tab,      setTab]      = useState('all'); // all | upcoming | ongoing | completed
+  const [tab,      setTab]      = useState('all');
   const [sysReady, setSysReady] = useState({ webcam: null, mic: null });
+  const [profilePhoto, setProfilePhoto] = useState(null);
 
   /* ── Fetch real data ─────────────────────────────────────────── */
   const fetchAll = useCallback(async () => {
@@ -128,6 +129,16 @@ export default function StudentDashboard({ user, token, onStartExam, onNavigate 
     setLoading(false);
   }, [token]);
 
+  // Fetch profile photo separately
+  useEffect(() => {
+    fetch(`${BASE_URL}/api/profile`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.ProfilePhoto || d?.profilePhoto) setProfilePhoto(d.ProfilePhoto || d.profilePhoto); })
+      .catch(() => {});
+  }, [token]);
+
   useEffect(() => {
     fetchAll();
     const t = setInterval(fetchAll, 8000);
@@ -146,7 +157,10 @@ export default function StudentDashboard({ user, token, onStartExam, onNavigate 
   const upcoming     = exams.filter(e => getStatus(e) === 'upcoming');
   const ongoing      = exams.filter(e => getStatus(e) === 'ongoing');
   const completed    = results.length > 0
-    ? exams.filter(e => results.some(r => r.exam_id === (e.examId || e.id)))
+    ? exams.filter(e => results.some(r =>
+        (r.ExamId || r.exam_id) === (e.examId || e.ExamId || e.id) &&
+        (r.Status || r.status || '').toLowerCase() === 'submitted'
+      ))
     : exams.filter(e => getStatus(e) === 'completed');
 
   const tabExams = tab === 'all'       ? exams
@@ -154,7 +168,7 @@ export default function StudentDashboard({ user, token, onStartExam, onNavigate 
                  : tab === 'ongoing'   ? ongoing
                  : completed;
 
-  const studentId = user?.studentId || (user?.username || 'STU001').toUpperCase();
+  const studentId = user?.userId || user?.UserId || user?.studentId || user?.username || 'N/A';
 
   return (
     <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', animation: 'fadeIn 0.3s ease' }}>
@@ -251,7 +265,16 @@ export default function StudentDashboard({ user, token, onStartExam, onNavigate 
                 const badge  = STATUS_BADGE[status];
                 const isLive = status === 'ongoing';
                 const isDone = status === 'completed';
-                const examResult = results.find(r => r.exam_id === (ex.examId || ex.id));
+                const examResult = results.find(r =>
+                  (r.ExamId || r.exam_id) === (ex.examId || ex.ExamId || ex.id) &&
+                  (r.Status || r.status || '').toLowerCase() === 'submitted'
+                );
+                const resultScore = examResult
+                  ? (examResult.Score ?? examResult.score ?? 0)
+                  : null;
+                const resultTotal = examResult
+                  ? (examResult.TotalMarks || examResult.total_questions || 0)
+                  : null;
                 return (
                   <div key={ex.examId || ex.id || i} style={{
                     display: 'flex', alignItems: 'center', gap: '14px',
@@ -342,7 +365,7 @@ export default function StudentDashboard({ user, token, onStartExam, onNavigate 
                           onMouseOver={e => e.currentTarget.style.borderColor = '#4f8ef7'}
                           onMouseOut={e => e.currentTarget.style.borderColor = '#e2e8f0'}
                         >
-                          {examResult ? `Score: ${examResult.score}` : 'View Result'}
+                          {examResult ? `Score: ${resultScore}/${resultTotal}` : 'View Result'}
                         </button>
                       ) : (
                         <button
@@ -415,14 +438,16 @@ export default function StudentDashboard({ user, token, onStartExam, onNavigate 
 
           {/* Avatar row */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
-            <div style={{
-              width: '52px', height: '52px', borderRadius: '50%', flexShrink: 0,
+            <div style={{ width: '52px', height: '52px', borderRadius: '50%', flexShrink: 0, overflow: 'hidden',
               background: 'linear-gradient(135deg, #4f8ef7, #6366f1)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: '1.4rem', color: '#fff', fontWeight: 800,
               boxShadow: '0 4px 12px rgba(79,142,247,0.3)',
             }}>
-              {(user?.username || 'S')[0].toUpperCase()}
+              {profilePhoto
+                ? <img src={profilePhoto} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : (user?.username || 'S')[0].toUpperCase()
+              }
             </div>
             <div>
               <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0f172a' }}>

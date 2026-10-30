@@ -8,7 +8,7 @@ namespace AIProctoringAPI.Controllers;
 [ApiController]
 [Route("api/settings")]
 [Produces("application/json")]
-[Authorize(Roles = "administrator")]
+[Authorize(Roles = "administrator,admin,teacher")]
 public class SettingsController : ControllerBase
 {
     private readonly ISettingsService _settings;
@@ -60,3 +60,4 @@ public class SettingsController : ControllerBase
         return Ok(new { message });
     }
 }
+

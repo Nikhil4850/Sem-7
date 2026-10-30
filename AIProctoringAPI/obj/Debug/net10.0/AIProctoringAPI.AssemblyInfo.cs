@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("AIProctoringAPI")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+143f7bc569a8f1be59b3e5eb76bfad7724d36973")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a2ccea2d9082b95b8502ccd593c1678198de0fa9")]
 [assembly: System.Reflection.AssemblyProductAttribute("AIProctoringAPI")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AIProctoringAPI")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

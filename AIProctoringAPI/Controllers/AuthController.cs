@@ -66,13 +66,13 @@ public class UsersController : ControllerBase
 
     /// <summary>Get all registered users. Admin only.</summary>
     [HttpGet]
-    [Authorize(Roles = "administrator")]
+    [Authorize(Roles = "administrator,admin")]
     [ProducesResponseType(typeof(List<UserResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll() => Ok(await _auth.GetAllUsersAsync());
 
     /// <summary>Get a user by username. Admin only.</summary>
     [HttpGet("{username}")]
-    [Authorize(Roles = "administrator")]
+    [Authorize(Roles = "administrator,admin")]
     [ProducesResponseType(typeof(UserResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetByUsername(string username)
@@ -83,7 +83,7 @@ public class UsersController : ControllerBase
 
     /// <summary>Update a user's role. Admin only.</summary>
     [HttpPut("{username}/role")]
-    [Authorize(Roles = "administrator")]
+    [Authorize(Roles = "administrator,admin")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -92,7 +92,9 @@ public class UsersController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        var requestingRole = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
+        var requestingRole = User.FindFirst(ClaimTypes.Role)?.Value
+                          ?? User.FindFirst("role")?.Value
+                          ?? string.Empty;
         var (success, message) = await _auth.UpdateUserRoleAsync(username, request.Role, requestingRole);
 
         if (!success)
@@ -105,3 +107,4 @@ public class UsersController : ControllerBase
         return Ok(new { message });
     }
 }
+

@@ -45,25 +45,22 @@ public class ProctoringController : ControllerBase
     public async Task<IActionResult> GetUserLogs(int userId)
     {
         // Students can only view their own logs
-        if (!User.IsInRole("administrator") && userId != GetUserId())
+        if (!User.IsInRole("administrator") && !User.IsInRole("admin") && !User.IsInRole("teacher") && userId != GetUserId())
             return Forbid();
 
         return Ok(await _proctoring.GetUserLogsAsync(userId));
     }
 
-    /// <summary>Get all proctoring logs. Admin only.</summary>
+    /// <summary>Get all proctoring logs. Admin/Teacher only.</summary>
     [HttpGet("logs")]
-    [Authorize(Roles = "administrator")]
+    [Authorize(Roles = "administrator,admin,teacher")]
     [ProducesResponseType(typeof(List<LogResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll() =>
         Ok(await _proctoring.GetAllLogsAsync());
 
-    /// <summary>
-    /// Save a proctoring verdict. Restricted to administrators and trusted AI backend services.
-    /// Students cannot submit their own verdicts.
-    /// </summary>
+    /// <summary>Save a proctoring verdict. Admin/Teacher only.</summary>
     [HttpPost("verdicts")]
-    [Authorize(Roles = "administrator")]
+    [Authorize(Roles = "administrator,admin,teacher")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> SaveVerdict([FromBody] SaveVerdictRequest request)
@@ -90,3 +87,4 @@ public class ProctoringController : ControllerBase
         return int.TryParse(claim, out int id) ? id : 0;
     }
 }
+

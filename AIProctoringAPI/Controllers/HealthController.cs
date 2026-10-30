@@ -30,3 +30,4 @@ public class HealthController : ControllerBase
         return dbOk ? Ok(response) : StatusCode(StatusCodes.Status503ServiceUnavailable, response);
     }
 }
+

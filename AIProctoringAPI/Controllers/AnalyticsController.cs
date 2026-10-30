@@ -8,7 +8,7 @@ namespace AIProctoringAPI.Controllers;
 [ApiController]
 [Route("api/analytics")]
 [Produces("application/json")]
-[Authorize(Roles = "administrator")]
+[Authorize(Roles = "administrator,admin,teacher")]
 public class AnalyticsController : ControllerBase
 {
     private readonly IAnalyticsService _analytics;
@@ -27,3 +27,4 @@ public class AnalyticsController : ControllerBase
     public async Task<IActionResult> GetHourly() =>
         Ok(await _analytics.GetHourlyAnalyticsAsync());
 }
+

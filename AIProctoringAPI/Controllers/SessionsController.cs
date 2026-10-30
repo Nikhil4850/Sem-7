@@ -94,7 +94,7 @@ public class SessionsController : ControllerBase
 
     /// <summary>Get all active sessions. Admin only.</summary>
     [HttpGet("active")]
-    [Authorize(Roles = "administrator")]
+    [Authorize(Roles = "administrator,admin,teacher")]
     [ProducesResponseType(typeof(List<SessionResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetActive() =>
         Ok(await _sessions.GetActiveSessionsAsync());
@@ -146,3 +146,4 @@ public class SessionsController : ControllerBase
         return int.TryParse(claim, out int id) ? id : 0;
     }
 }
+

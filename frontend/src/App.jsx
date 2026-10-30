@@ -34,6 +34,8 @@ import CompliancePage     from './components/CompliancePage';
 import Footer             from './components/Footer';
 
 import UsersPage          from './components/UsersPage';
+import StudentProfile     from './components/StudentProfile';
+import StudentDataPage    from './components/StudentDataPage';
 import { useProctor }     from './hooks/useProctor';
 import { BASE_URL }       from './api';
 
@@ -84,8 +86,9 @@ export default function App() {
     const restoredView = safeView(savedView, resolvedRole);
     const fullName     = localStorage.getItem('fullName') || '';
     const email        = localStorage.getItem('email') || '';
+    const userId       = localStorage.getItem('userId') || '';
 
-    setUser({ token, role: resolvedRole, username, fullName, email });
+    setUser({ token, role: resolvedRole, username, fullName, email, userId });
     setView(restoredView);
     setAuthChecked(true);
 
@@ -133,17 +136,20 @@ export default function App() {
 
   function handleLoginSuccess(data) {
     const token = data.token || data.access_token;
-    const role  = (data.role || 'student').toLowerCase();
+    const role  = (data.role || data.Role || 'student').toLowerCase();
+    const username = data.username || data.Username || '';
+    const userId = data.userId || data.UserId || '';
     const dv    = defaultViewForRole(role);
 
     localStorage.setItem('token',    token);
     localStorage.setItem('role',     role);
-    localStorage.setItem('username', data.username || '');
+    localStorage.setItem('username', username);
     localStorage.setItem('view',     dv);
-    if (data.fullName || data.full_name) localStorage.setItem('fullName', data.fullName || data.full_name);
-    if (data.email)                      localStorage.setItem('email',    data.email);
+    if (data.fullName || data.FullName) localStorage.setItem('fullName', data.fullName || data.FullName);
+    if (data.email    || data.Email)    localStorage.setItem('email',    data.email    || data.Email);
+    if (userId)                         localStorage.setItem('userId',   userId);
 
-    setUser({ token, role, username: data.username || '', fullName: data.fullName || data.full_name || '', email: data.email || '' });
+    setUser({ token, role, username, userId, fullName: data.fullName || data.FullName || '', email: data.email || data.Email || '' });
     setView(dv);
   }
 
@@ -206,7 +212,7 @@ export default function App() {
 
   const teacherWorkspaceViews = [
     'dashboard', 'live-monitor', 'evidence', 'analytics',
-    'questions', 'exam-mgmt', 'results', 'users', 'system-health', 'settings'
+    'questions', 'exam-mgmt', 'results', 'users', 'system-health', 'settings', 'teacher-profile', 'student-data'
   ];
   const isTeacherWorkspace = user &&
     (user.role === 'admin' || user.role === 'administrator' || user.role === 'teacher') &&
@@ -254,6 +260,8 @@ export default function App() {
                   {view === 'users'         && (isAdmin ? <UsersPage token={user.token} /> : <div style={{ padding: '40px', textAlign: 'center', color: '#ef4444' }}>⛔ Admin access only.</div>)}
                   {view === 'system-health' && <SystemHealthPage token={user.token} onNavigate={navigate} />}
                   {view === 'settings'      && <SystemSettings token={user.token} />}
+                  {view === 'teacher-profile' && <StudentProfile user={user} token={user.token} onProfileUpdate={(updates) => { if (updates.fullName) localStorage.setItem('fullName', updates.fullName); }} />}
+                  {view === 'student-data'    && <StudentDataPage token={user.token} onNavigate={navigate} />}
                 </>
               );
             })()}
@@ -318,19 +326,15 @@ export default function App() {
               </div>
             )}
             {view === 'student-profile' && (
-              <div style={{ background: '#fff', borderRadius: '16px', padding: '32px', border: '1px solid #e8edf2', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', maxWidth: '520px' }}>
-                <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#0f172a', marginBottom: '20px' }}>👤 My Profile</h2>
-                <div style={{ display:'flex', alignItems:'center', gap:'16px', marginBottom:'24px', padding:'18px', background:'#f8fafc', borderRadius:'12px', border:'1px solid #e2e8f0' }}>
-                  <div style={{ width:'60px', height:'60px', borderRadius:'50%', background:'linear-gradient(135deg,#4f8ef7,#6366f1)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:800, fontSize:'1.5rem' }}>{(user?.username||'S')[0].toUpperCase()}</div>
-                  <div><div style={{ fontWeight:800, color:'#0f172a', fontSize:'1rem' }}>{user?.fullName||user?.username||'Student'}</div><div style={{ color:'#94a3b8', fontSize:'0.78rem', marginTop:'2px' }}>Student Portal</div></div>
-                </div>
-                {[['Username', user?.username],['Role', 'Student'],['Email', `${user?.username||'student'}@git.edu.in`]].map(([k,v],i) => (
-                  <div key={i} style={{ display:'flex', gap:'12px', padding:'12px 0', borderBottom: i<2 ? '1px solid #f4f7fb' : 'none' }}>
-                    <span style={{ color:'#94a3b8', fontSize:'0.82rem', minWidth:'100px', fontWeight:500 }}>{k}</span>
-                    <span style={{ color:'#334155', fontSize:'0.82rem', fontWeight:600 }}>{v}</span>
-                  </div>
-                ))}
-              </div>
+              <StudentProfile
+                user={user}
+                token={user.token}
+                onProfileUpdate={(updates) => {
+                  // Update App-level user state with new name/email
+                  if (updates.fullName) localStorage.setItem('fullName', updates.fullName);
+                  if (updates.email)    localStorage.setItem('email',    updates.email);
+                }}
+              />
             )}
             {view === 'student-support' && (
               <div style={{ background: '#fff', borderRadius: '16px', padding: '32px', border: '1px solid #e8edf2', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', maxWidth: '520px' }}>

@@ -17,7 +17,7 @@ public class CertificatesController : ControllerBase
 
     /// <summary>Issue a certificate. Admin only.</summary>
     [HttpPost("issue")]
-    [Authorize(Roles = "administrator")]
+    [Authorize(Roles = "administrator,admin,teacher")]
     [ProducesResponseType(typeof(CertificateResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Issue([FromBody] IssueCertificateRequest request)
@@ -65,3 +65,4 @@ public class CertificatesController : ControllerBase
         return int.TryParse(claim, out int id) ? id : 0;
     }
 }
+

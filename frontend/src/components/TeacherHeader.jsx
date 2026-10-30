@@ -241,7 +241,7 @@ export default function TeacherHeader({ view, user, onNavigate, onLogout }) {
               minWidth: '188px', zIndex: 300, overflow: 'hidden',
             }}>
               {[
-                { label: 'Profile & Settings', icon: '⚙️', action: () => { onNavigate('settings'); setDropdown(false); } },
+                { label: 'Profile & Settings', icon: '⚙️', action: () => { onNavigate('teacher-profile'); setDropdown(false); } },
                 { label: 'My Exams',           icon: '📋', action: () => { onNavigate('exam-mgmt'); setDropdown(false); } },
               ].map(item => (
                 <button key={item.label} onClick={item.action}

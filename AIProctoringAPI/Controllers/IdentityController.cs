@@ -60,3 +60,4 @@ public class IdentityController : ControllerBase
         return int.TryParse(claim, out int id) ? id : 0;
     }
 }
+

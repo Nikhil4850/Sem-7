@@ -17,7 +17,7 @@ public class ExamsController : ControllerBase
 
     /// <summary>Create a new exam. Admin only.</summary>
     [HttpPost]
-    [Authorize(Roles = "administrator")]
+    [Authorize(Roles = "administrator,admin,teacher")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Create([FromBody] CreateExamRequest request)
@@ -51,7 +51,7 @@ public class ExamsController : ControllerBase
 
     /// <summary>Update an exam. Admin only.</summary>
     [HttpPut("{id:int}")]
-    [Authorize(Roles = "administrator")]
+    [Authorize(Roles = "administrator,admin,teacher")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateExamRequest request)
@@ -69,7 +69,7 @@ public class ExamsController : ControllerBase
 
     /// <summary>Delete an exam. Admin only.</summary>
     [HttpDelete("{id:int}")]
-    [Authorize(Roles = "administrator")]
+    [Authorize(Roles = "administrator,admin,teacher")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(int id)
@@ -87,3 +87,4 @@ public class ExamsController : ControllerBase
         return int.TryParse(claim, out int id) ? id : 0;
     }
 }
+
