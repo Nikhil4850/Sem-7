@@ -23,10 +23,16 @@ export default function LoginPage({ onLogin }) {
       const data = await res.json();
       if (!res.ok) { setError(data.detail || data.message || 'Login failed'); setLoading(false); return; }
       const token = data.token || data.access_token;
+      const role  = (data.role || 'student').toLowerCase();
+      // Determine default view for the role and persist it so refresh restores the dashboard
+      const defaultView = (role === 'admin' || role === 'administrator' || role === 'teacher')
+        ? 'dashboard'
+        : 'student-dashboard';
       localStorage.setItem('token',    token);
-      localStorage.setItem('role',     data.role);
+      localStorage.setItem('role',     role);
       localStorage.setItem('username', data.username || username);
-      onLogin({ ...data, token });
+      localStorage.setItem('view',     defaultView);
+      onLogin({ ...data, token, role });
     } catch {
       setError('Cannot reach backend. Is the server running?');
     }

@@ -40,6 +40,7 @@ export default function ExamPanel({ token, examId, onDone, videoRef: externalVid
   const [error, setError]         = useState(null);
   const [examMeta, setExamMeta]   = useState(null);
   const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [forceNew, setForceNew] = useState(false);
 
   // internal videoRef if not provided externally
   const internalVideoRef = useRef(null);
@@ -76,15 +77,24 @@ export default function ExamPanel({ token, examId, onDone, videoRef: externalVid
       const startRes = await fetch(API.sessionStart, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ examId })
+        body: JSON.stringify({ ExamId: examId, forceNew })
       });
+      setForceNew(false);
       if (!startRes.ok) {
         const err = await startRes.json().catch(() => ({}));
         throw new Error(err.detail || 'Failed to start exam session');
       }
       const sData = await startRes.json();
-      setSession(sData);
-      setExamMeta(sData);
+      // .NET API returns { message, sessionId } — normalise to what ExamPanel expects
+      const normSession = {
+        sessionId:       sData.sessionId || sData.SessionId || sData.id,
+        id:              sData.sessionId || sData.SessionId || sData.id,
+        durationMinutes: sData.durationMinutes || sData.DurationMinutes || null,
+        title:           sData.examTitle || sData.ExamTitle || sData.title || '',
+        totalMarks:      sData.totalMarks || sData.TotalMarks || null,
+      };
+      setSession(normSession);
+      setExamMeta(normSession);
 
       const qRes = await fetch(`${API.questions}?examId=${examId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -109,24 +119,42 @@ export default function ExamPanel({ token, examId, onDone, videoRef: externalVid
     const timeTaken = (session.durationMinutes
       ? session.durationMinutes * 60
       : EXAM_DURATION) - timeLeft;
-    // Stringify all keys so backend's answers.get(str(q["id"])) lookup works
-    const stringAnswers = {};
-    Object.entries(answers).forEach(([k, v]) => { stringAnswers[String(k)] = v; });
+    // .NET API expects { Answers: { questionId(int): answer } }
+    const dotnetAnswers = {};
+    Object.entries(answers).forEach(([k, v]) => { dotnetAnswers[parseInt(k)] = v; });
     try {
       const res = await fetch(API.sessionSubmit(session.sessionId || session.id), {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answers: stringAnswers, timeTaken })
+        body: JSON.stringify({ Answers: dotnetAnswers, timeTaken })
       });
       if (res.ok) {
         const data = await res.json();
-        // Backend returns questions + answers in response for result screen
-        // Fall back to local state if backend doesn't include them
+        // Normalise .NET response: { SessionId, Score, TotalMarks, SubmittedAt, Questions, SubmittedAnswers }
+        const total = data.TotalMarks || data.totalMarks || data.total || questions.length;
+        const score = data.Score ?? data.score ?? 0;
+        const pct   = data.Percentage ?? data.percentage ?? Math.round((score / Math.max(total, 1)) * 100);
+
+        // Use questions returned from backend (with CorrectAnswer revealed)
+        // Fall back to local questions only if backend didn't return them
+        const resultQuestions = (data.Questions && data.Questions.length > 0)
+          ? data.Questions
+          : (data.questions && data.questions.length > 0 ? data.questions : questions);
+
+        // Merge submitted answers — backend returns as int keys, normalise to string keys
+        const submittedAnswers = {};
+        const rawAnswers = data.SubmittedAnswers || data.submittedAnswers || data.answers || dotnetAnswers;
+        Object.entries(rawAnswers).forEach(([k, v]) => { submittedAnswers[String(k)] = v; });
+
         setResult({
-          ...data,
-          questions: data.questions && data.questions.length > 0 ? data.questions : questions,
-          answers:   data.answers   || stringAnswers,
-          timeTaken: data.timeTaken ?? timeTaken,
+          score,
+          total,
+          percentage:   pct,
+          passingScore: data.PassingScore || data.passingScore || 60,
+          passed:       data.Passed ?? data.passed ?? (pct >= 60),
+          timeTaken,
+          questions:    resultQuestions,
+          answers:      submittedAnswers,
         });
         setPhase('result');
       } else {
@@ -180,26 +208,28 @@ export default function ExamPanel({ token, examId, onDone, videoRef: externalVid
   /* ──────────────────────────────────────────────────────────────── */
   if (phase === 'result' && result) {
     const pct    = result.percentage ?? Math.round((result.score / Math.max(result.total, 1)) * 100);
-    const passed = pct >= 60;
+    const passed = result.passed !== undefined ? result.passed : pct >= (result.passingScore ?? 60);
+    const passingScore = result.passingScore ?? 60;
     const mins   = result.timeTaken ? Math.floor(result.timeTaken / 60) : null;
     const secs   = result.timeTaken ? result.timeTaken % 60 : null;
     const qs     = result.questions || [];
     const userAns = result.answers  || {};
     const correct = qs.filter(q => {
-      const qkey = String(q.questionId ?? q.id);
-      const ca = (q.correctAnswer || q.correct_answer || '').toUpperCase();
+      const qkey = String(q.questionId ?? q.QuestionId ?? q.id);
+      const ca = (q.correctAnswer || q.CorrectAnswer || q.correct_answer || '').toUpperCase();
       return (userAns[qkey] || '').toUpperCase() === ca;
     }).length;
     const wrong = qs.filter(q => {
-      const qkey = String(q.questionId ?? q.id);
-      const ca = (q.correctAnswer || q.correct_answer || '').toUpperCase();
+      const qkey = String(q.questionId ?? q.QuestionId ?? q.id);
+      const ca = (q.correctAnswer || q.CorrectAnswer || q.correct_answer || '').toUpperCase();
       const my = (userAns[qkey] || '').toUpperCase();
       return my && my !== ca;
     }).length;
     const skipped = qs.length - correct - wrong;
 
     return (
-      <div style={{ minHeight: '100vh', background: '#f0f4f8', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '32px 24px', overflowY: 'auto' }}>
+      <div style={{ position: 'fixed', inset: 0, background: '#f0f4f8', overflowY: 'auto', zIndex: 100 }}>
+        <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '32px 24px' }}>
         <div style={{ width: '100%', maxWidth: '760px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
           <div style={{ background: passed ? 'linear-gradient(135deg,#f0fdf4,#dcfce7)' : 'linear-gradient(135deg,#fef2f2,#fee2e2)', border: `2px solid ${passed ? '#86efac' : '#fca5a5'}`, borderRadius: '20px', padding: '36px 24px', textAlign: 'center' }}>
@@ -208,6 +238,7 @@ export default function ExamPanel({ token, examId, onDone, videoRef: externalVid
               {result.score} <span style={{ fontSize: '1.8rem', color: '#64748b', fontWeight: 600 }}>/ {result.total}</span>
             </div>
             <div style={{ fontSize: '1.6rem', fontWeight: 800, color: passed ? '#15803d' : '#dc2626', margin: '10px 0 4px' }}>{pct}% — {passed ? 'PASSED' : 'FAILED'}</div>
+            <div style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '4px' }}>Passing score: {passingScore}%</div>
             <div style={{ fontSize: '1rem', fontWeight: 600, color: '#475569' }}>
               {pct >= 90 ? 'Excellent! Outstanding performance.' : pct >= 75 ? 'Great job! Well done.' : passed ? 'You passed. Keep it up!' : 'You did not pass. Review and try again.'}
             </div>
@@ -233,12 +264,17 @@ export default function ExamPanel({ token, examId, onDone, videoRef: externalVid
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>📋 Question Review</h3>
               </div>
               {qs.map((q, i) => {
-                const qkey = String(q.questionId ?? q.id ?? i);
-                const ca   = (q.correctAnswer || q.correct_answer || '').toUpperCase();
+                const qkey = String(q.questionId ?? q.QuestionId ?? q.id ?? i);
+                const ca   = (q.correctAnswer || q.CorrectAnswer || q.correct_answer || '').toUpperCase();
                 const myAns = (userAns[qkey] || '').toUpperCase();
                 const isCorr = myAns === ca, isSkip = !myAns;
-                const qText = q.questionText || q.question_text || `Question ${i + 1}`;
-                const opts = { A: q.optionA || q.option_a || '', B: q.optionB || q.option_b || '', C: q.optionC || q.option_c || '', D: q.optionD || q.option_d || '' };
+                const qText = q.questionText || q.QuestionText || q.question_text || `Question ${i + 1}`;
+                const opts = {
+                  A: q.optionA || q.OptionA || q.option_a || '',
+                  B: q.optionB || q.OptionB || q.option_b || '',
+                  C: q.optionC || q.OptionC || q.option_c || '',
+                  D: q.optionD || q.OptionD || q.option_d || ''
+                };
                 return (
                   <div key={qkey} style={{ padding: '16px 20px', borderBottom: i < qs.length - 1 ? '1px solid #f1f5f9' : 'none', background: isCorr ? '#f0fdf4' : isSkip ? '#fffbeb' : '#fef2f2' }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '10px' }}>
@@ -272,7 +308,7 @@ export default function ExamPanel({ token, examId, onDone, videoRef: externalVid
           )}
 
           <div style={{ display: 'flex', gap: '12px' }}>
-            <button onClick={() => { setPhase('start'); setAnswers({}); setMarked(new Set()); setQuestions([]); setSession(null); setResult(null); setTimeLeft(EXAM_DURATION); }}
+            <button onClick={() => { setPhase('start'); setAnswers({}); setMarked(new Set()); setQuestions([]); setSession(null); setResult(null); setTimeLeft(EXAM_DURATION); setForceNew(true); }}
               style={{ flex: 1, padding: '14px', background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '12px', fontSize: '0.9rem', fontWeight: 700, cursor: 'pointer', color: '#334155', fontFamily: 'inherit' }}>
               🔄 Retake Exam
             </button>
@@ -281,6 +317,7 @@ export default function ExamPanel({ token, examId, onDone, videoRef: externalVid
               🏠 Back to Dashboard
             </button>
           </div>
+        </div>
         </div>
       </div>
     );
@@ -304,10 +341,10 @@ export default function ExamPanel({ token, examId, onDone, videoRef: externalVid
 
   const isLowTime    = timeLeft < 5 * 60;
   const { h, m: mm, s: ss } = formatHMS(timeLeft);
-  const questionText = q.questionText || q.question_text || '';
-  const optKey       = (letter) => q[`option${letter}`] || q[`option_${letter.toLowerCase()}`] || '';
+  const questionText = q.questionText || q.QuestionText || q.question_text || '';
+  const optKey       = (letter) => q[`option${letter}`] || q[`Option${letter}`] || q[`option_${letter.toLowerCase()}`] || '';
   // Always use string key so answers map is consistent across store/read/submit
-  const questionKey  = String(q.questionId ?? q.id ?? current);
+  const questionKey  = String(q.questionId ?? q.QuestionId ?? q.id ?? current);
   const isMarked     = marked.has(current);
 
   const answeredCount = Object.keys(answers).length;
@@ -408,7 +445,7 @@ export default function ExamPanel({ token, examId, onDone, videoRef: externalVid
           {/* Question grid */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: '4px', marginBottom: '12px' }}>
             {questions.map((qItem, idx) => {
-              const qk = String(qItem.questionId ?? qItem.id ?? idx);
+              const qk = String(qItem.questionId ?? qItem.QuestionId ?? qItem.id ?? idx);
               const status = getQStatus(idx, current, answers, qk, marked);
               const sc = Q_STATUS_COLORS[status];
               return (
@@ -526,7 +563,7 @@ export default function ExamPanel({ token, examId, onDone, videoRef: externalVid
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
               {questions.map((qItem, idx) => {
-                const qk = String(qItem.questionId ?? qItem.id ?? idx);
+                const qk = String(qItem.questionId ?? qItem.QuestionId ?? qItem.id ?? idx);
                 const status = getQStatus(idx, current, answers, qk, marked);
                 const sc = Q_STATUS_COLORS[status];
                 return (

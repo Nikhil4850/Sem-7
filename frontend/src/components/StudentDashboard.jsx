@@ -118,7 +118,7 @@ export default function StudentDashboard({ user, token, onStartExam, onNavigate 
     } catch {}
 
     try {
-      const rRes = await fetch(`${BASE_URL}/api/sessions`, { headers: h });
+      const rRes = await fetch(`${BASE_URL}/api/sessions/my`, { headers: h });
       if (rRes.ok) {
         const data = await rRes.json();
         setResults(Array.isArray(data) ? data : []);

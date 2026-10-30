@@ -41,7 +41,7 @@ export default function AnalyticsPage({ token, onNavigate }) {
           <h2 style={{ fontSize: '1.8rem' }}>Institutional Integrity & AI Proctoring Analytics</h2>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
-          <button className="btn btn-outline" onClick={() => window.open(`${BASE_URL}/api/sessions/export/csv`)}>
+          <button className="btn btn-outline" onClick={() => window.open(`${BASE_URL}/api/sessions/results/export/csv`)}>
             📥 Export CSV Report
           </button>
           <button className="btn btn-secondary" onClick={() => onNavigate('dashboard')}>

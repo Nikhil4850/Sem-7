@@ -12,9 +12,9 @@ const BLANK_Q = {
   correctAnswer: 'B', marks: 10, orderNumber: 1
 };
 
-// helper — normalise id field from API response (examId or id)
-const eid = (ex) => ex?.examId ?? ex?.id;
-const qid = (q)  => q?.questionId ?? q?.id;
+// helper — normalise id field from API response (examId or id or ExamId)
+const eid = (ex) => ex?.examId ?? ex?.ExamId ?? ex?.id;
+const qid = (q)  => q?.questionId ?? q?.QuestionId ?? q?.id;
 
 export default function ExamManagement({ token }) {
   const [exams, setExams]             = useState([]);
@@ -129,14 +129,14 @@ export default function ExamManagement({ token }) {
   function startEditExam(ex) {
     setEditingExam(eid(ex));
     setExamForm({
-      title: ex.title,
-      description: ex.description || '',
-      durationMinutes: ex.durationMinutes || 60,
-      totalMarks: ex.totalMarks || 100,
-      passingScore: ex.passingScore || 60,
-      isActive: ex.isActive !== undefined ? ex.isActive : true,
-      startTime: ex.startTime ? ex.startTime.slice(0, 16) : '',
-      endTime:   ex.endTime   ? ex.endTime.slice(0, 16)   : '',
+      title:           ex.title           || ex.Title           || '',
+      description:     ex.description     || ex.Description     || '',
+      durationMinutes: ex.durationMinutes || ex.DurationMinutes || 60,
+      totalMarks:      ex.totalMarks      || ex.TotalMarks      || 100,
+      passingScore:    ex.passingScore    || ex.PassingScore    || 60,
+      isActive:        ex.isActive !== undefined ? ex.isActive : (ex.IsActive !== undefined ? ex.IsActive : true),
+      startTime:       (ex.startTime || ex.StartTime || '') ? (ex.startTime || ex.StartTime || '').slice(0, 16) : '',
+      endTime:         (ex.endTime   || ex.EndTime   || '') ? (ex.endTime   || ex.EndTime   || '').slice(0, 16) : '',
     });
     setShowExamForm(true);
     setActiveExam(null);
@@ -196,16 +196,16 @@ export default function ExamManagement({ token }) {
   function startEditQ(q) {
     setEditingQ(qid(q));
     setQForm({
-      examId: eid(activeExam),
-      questionText: q.questionText || q.question_text || '',
-      questionType: q.questionType || q.question_type || 'MCQ',
-      optionA: q.optionA || q.option_a || '',
-      optionB: q.optionB || q.option_b || '',
-      optionC: q.optionC || q.option_c || '',
-      optionD: q.optionD || q.option_d || '',
-      correctAnswer: q.correctAnswer || q.correct_answer || 'B',
-      marks: q.marks || 10,
-      orderNumber: q.orderNumber || q.order_number || 1
+      examId:       eid(activeExam),
+      questionText: q.questionText || q.QuestionText || q.question_text || '',
+      questionType: q.questionType || q.QuestionType || q.question_type || 'MCQ',
+      optionA:      q.optionA || q.OptionA || q.option_a || '',
+      optionB:      q.optionB || q.OptionB || q.option_b || '',
+      optionC:      q.optionC || q.OptionC || q.option_c || '',
+      optionD:      q.optionD || q.OptionD || q.option_d || '',
+      correctAnswer: q.correctAnswer || q.CorrectAnswer || q.correct_answer || 'B',
+      marks:        q.marks || q.Marks || 10,
+      orderNumber:  q.orderNumber || q.OrderNumber || q.order_number || 1
     });
     setShowQForm(true);
   }
@@ -310,15 +310,15 @@ export default function ExamManagement({ token }) {
               <div key={eid(ex)} className="card" style={{ padding: '22px', display: 'flex', flexDirection: 'column', border: isOpen ? '2px solid #0066ff' : '1px solid #e2e8f0' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
                   <span className="badge badge-primary">{ex.description || '—'}</span>
-                  <span className={ex.isActive ? 'badge badge-success' : 'badge badge-warning'}>
-                    {ex.isActive ? 'Active 🟢' : 'Inactive'}
+                  <span className={ex.isActive || ex.IsActive ? 'badge badge-success' : 'badge badge-warning'}>
+                    {ex.isActive || ex.IsActive ? 'Active 🟢' : 'Inactive'}
                   </span>
                 </div>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#0f172a', marginBottom: '10px' }}>{ex.title}</h3>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#0f172a', marginBottom: '10px' }}>{ex.title || ex.Title}</h3>
                 <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '10px 14px', borderRadius: '8px', marginBottom: '16px', fontSize: '0.82rem', color: '#64748b', display: 'flex', justifyContent: 'space-between' }}>
-                  <span>⏱️ {ex.durationMinutes} min</span>
-                  <span>🎯 {ex.totalMarks || 100} marks</span>
-                  <span>✅ Pass: {ex.passingScore || 60}%</span>
+                  <span>⏱️ {ex.durationMinutes || ex.DurationMinutes} min</span>
+                  <span>🎯 {ex.totalMarks || ex.TotalMarks || 100} marks</span>
+                  <span>✅ Pass: {ex.passingScore || ex.PassingScore || 60}%</span>
                 </div>
                 <div style={{ display: 'flex', gap: '8px', marginTop: 'auto' }}>
                   <button className="btn btn-primary" style={{ flex: 1, fontSize: '0.82rem', padding: '7px' }} onClick={() => isOpen ? setActiveExam(null) : openExamQuestions(ex)}>

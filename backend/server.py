@@ -1187,6 +1187,8 @@ class Token(BaseModel):
 class UserCreate(BaseModel):
     username: str
     password: str
+    email:    Optional[str] = ""
+    fullName: Optional[str] = ""
     role:     str = "student"
 
 class QuestionCreate(BaseModel):
@@ -1223,7 +1225,7 @@ app = FastAPI(title="AI Proctor — Full System")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://localhost:3001",
-                   "http://localhost:8000", "https://ai-proctor.vercel.app"],
+                   "https://ai-proctor.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -1240,6 +1242,8 @@ async def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
+            email TEXT DEFAULT '',
+            full_name TEXT DEFAULT '',
             role TEXT NOT NULL DEFAULT 'student',
             created_at TEXT DEFAULT (datetime('now'))
         );
@@ -1371,15 +1375,25 @@ async def startup():
             await db.commit()
         except Exception:
             pass
-        # Add exam_id to exam_sessions if missing
-        try:
-            await db.execute("ALTER TABLE exam_sessions ADD COLUMN exam_id INTEGER")
-            await db.commit()
-        except Exception:
-            pass
+        # Add email/fullName columns to users if missing
+        for col_sql in [
+            "ALTER TABLE users ADD COLUMN email TEXT DEFAULT ''",
+            "ALTER TABLE users ADD COLUMN full_name TEXT DEFAULT ''",
+        ]:
+            try:
+                await db.execute(col_sql)
+                await db.commit()
+            except Exception:
+                pass
         # Add time_taken to exam_sessions if missing
         try:
             await db.execute("ALTER TABLE exam_sessions ADD COLUMN time_taken INTEGER")
+            await db.commit()
+        except Exception:
+            pass
+        # Add exam_id to exam_sessions if missing
+        try:
+            await db.execute("ALTER TABLE exam_sessions ADD COLUMN exam_id INTEGER")
             await db.commit()
         except Exception:
             pass
@@ -1474,6 +1488,7 @@ async def _do_login(username: str, password: str) -> dict:
                             detail="Incorrect username or password")
     token = create_access_token({"sub": user["username"], "role": user["role"]})
     return {"access_token": token, "token_type": "bearer",
+            "token": token,
             "role": user["role"], "username": user["username"]}
 
 # Form-encoded login (OAuth2 / Swagger UI)
@@ -1495,17 +1510,23 @@ async def register(user: UserCreate):
     try:
         async with aiosqlite.connect(DB_PATH) as db:
             await db.execute(
-                "INSERT INTO users (username,password_hash,role) VALUES (?,?,?)",
-                (user.username, hashed, user.role)
+                "INSERT INTO users (username, password_hash, email, full_name, role) VALUES (?,?,?,?,?)",
+                (user.username, hashed, user.email or "", user.fullName or "", user.role)
             )
             await db.commit()
-        return {"message": f"User {user.username} created"}
+        return {"message": f"User {user.username} created successfully", "username": user.username, "role": user.role}
     except Exception:
         raise HTTPException(status_code=400, detail="Username already exists")
 
 @app.get("/me")
+@app.get("/api/auth/me")
 async def get_me(current_user=Depends(get_current_user)):
-    return {"username": current_user["username"], "role": current_user["role"]}
+    return {
+        "username": current_user["username"],
+        "role":     current_user["role"],
+        "email":    current_user.get("email", ""),
+        "fullName": current_user.get("full_name", ""),
+    }
 
 # ── Logs endpoints ────────────────────────────────────────────────
 async def save_log(user_id: str, event: str, score: int):
@@ -1549,16 +1570,16 @@ async def get_users(current_user=Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Admin only")
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
-        cur = await db.execute("SELECT id, username, role FROM users ORDER BY id DESC")
+        cur = await db.execute("SELECT id, username, email, full_name, role, created_at FROM users ORDER BY id DESC")
         rows = await cur.fetchall()
     return [
         {
             "userId":    r["id"],
             "username":  r["username"],
             "role":      r["role"],
-            "email":     f"{r['username']}@aiproctor.edu",
-            "fullName":  r["username"],
-            "createdAt": datetime.utcnow().isoformat(),
+            "email":     r["email"] or f"{r['username']}@aiproctor.edu",
+            "fullName":  r["full_name"] or r["username"],
+            "createdAt": r["created_at"],
         }
         for r in rows
     ]
@@ -1594,11 +1615,49 @@ async def get_proctoring_logs(current_user=Depends(get_current_user)):
         rows = await cur.fetchall()
     return [dict(r) for r in rows]
 
+@app.post("/api/proctoring/logs")
+async def create_proctoring_log(payload: dict, current_user=Depends(get_current_user)):
+    """Record a proctoring event (tab_switch, face_missing, multiple_faces, etc.)"""
+    session_id   = payload.get("sessionId")
+    event_type   = payload.get("eventType", "unknown")
+    event_detail = payload.get("eventDetails", "")
+    # Map event types to suspicion score increments
+    score_map = {
+        "tab_switch":          20,
+        "face_missing":        30,
+        "multiple_faces":      40,
+        "suspicious_movement": 15,
+        "phone_detected":      50,
+    }
+    score = score_map.get(event_type, 10)
+    async with aiosqlite.connect(DB_PATH) as db:
+        cur = await db.execute(
+            "INSERT INTO session_logs (user_id, event, suspicion_score) VALUES (?,?,?)",
+            (current_user["username"], f"{event_type}: {event_detail}", score)
+        )
+        await db.commit()
+        log_id = cur.lastrowid
+    return {
+        "logId":       log_id,
+        "sessionId":   session_id,
+        "eventType":   event_type,
+        "eventDetails":event_detail,
+        "suspicionScore": score,
+        "recordedAt":  datetime.utcnow().isoformat(),
+        "recordedBy":  current_user["username"],
+    }
+
 @app.get("/api/proctoring/verdicts")
 async def get_proctoring_verdicts(current_user=Depends(get_current_user)):
     """Aggregate per-student suspicion verdict from session_logs."""
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
+        # Return stored verdicts first
+        cur_v = await db.execute("SELECT * FROM proctoring_verdicts ORDER BY created_at DESC")
+        stored = await cur_v.fetchall()
+        if stored:
+            return [dict(r) for r in stored]
+        # Fallback: aggregate from session_logs
         cur = await db.execute(
             """SELECT user_id, COUNT(*) as violation_count,
                       MAX(suspicion_score) as max_score,
@@ -1614,10 +1673,49 @@ async def get_proctoring_verdicts(current_user=Depends(get_current_user)):
             "violationCount":  r["violation_count"],
             "maxScore":        r["max_score"],
             "lastSeen":        r["last_seen"],
-            "verdict":         "Flagged" if r["violation_count"] > 3 else "Clean",
+            "verdict":         "cheating_detected" if r["violation_count"] > 5 else
+                               "suspicious"        if r["violation_count"] > 2 else "clean",
         }
         for r in rows
     ]
+
+@app.post("/api/proctoring/verdicts")
+async def create_proctoring_verdict(payload: dict, current_user=Depends(get_current_user)):
+    """Admin records a proctoring verdict for a session."""
+    if current_user["role"] not in ("admin", "administrator"):
+        raise HTTPException(status_code=403, detail="Admin only")
+    session_id = payload.get("sessionId")
+    verdict    = payload.get("verdict", "clean")
+    confidence = payload.get("confidence", 0.0)
+    details    = payload.get("details", "")
+    async with aiosqlite.connect(DB_PATH) as db:
+        # Ensure the proctoring_verdicts table exists
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS proctoring_verdicts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id INTEGER,
+                verdict TEXT,
+                confidence REAL,
+                details TEXT,
+                recorded_by TEXT,
+                created_at TEXT DEFAULT (datetime('now'))
+            )
+        """)
+        cur = await db.execute(
+            "INSERT INTO proctoring_verdicts (session_id,verdict,confidence,details,recorded_by) VALUES (?,?,?,?,?)",
+            (session_id, verdict, confidence, details, current_user["username"])
+        )
+        await db.commit()
+        verdict_id = cur.lastrowid
+    return {
+        "verdictId":  verdict_id,
+        "sessionId":  session_id,
+        "verdict":    verdict,
+        "confidence": confidence,
+        "details":    details,
+        "recordedBy": current_user["username"],
+        "createdAt":  datetime.utcnow().isoformat(),
+    }
 
 @app.get("/logs/export/csv")
 async def export_logs_csv(current_user=Depends(get_current_user)):
@@ -1813,18 +1911,27 @@ async def start_exam(payload: dict = None, current_user=Depends(get_current_user
         if not exam_row:
             raise HTTPException(status_code=404, detail="Exam not found or not active")
 
-        # Resume existing active session for this exact exam
-        cur = await db.execute(
-            "SELECT * FROM exam_sessions WHERE student_id=? AND exam_id=? AND status='active'",
-            (current_user["username"], exam_id)
-        )
-        existing = await cur.fetchone()
-        if existing:
-            s = dict(existing)
-            s["question_ids"]    = json.loads(s.get("question_ids") or "[]")
-            s["sessionId"]       = s["id"]
-            s["durationMinutes"] = exam_row["duration_minutes"]
-            return s
+        # Resume existing active session for this exact exam (unless forceNew requested)
+        force_new = (payload or {}).get("forceNew", False)
+        if not force_new:
+            cur = await db.execute(
+                "SELECT * FROM exam_sessions WHERE student_id=? AND exam_id=? AND status='active'",
+                (current_user["username"], exam_id)
+            )
+            existing = await cur.fetchone()
+            if existing:
+                s = dict(existing)
+                s["question_ids"]    = json.loads(s.get("question_ids") or "[]")
+                s["sessionId"]       = s["id"]
+                s["durationMinutes"] = exam_row["duration_minutes"]
+                return s
+        else:
+            # Mark any old active/submitted sessions as completed so we get a fresh one
+            await db.execute(
+                "UPDATE exam_sessions SET status='completed' WHERE student_id=? AND exam_id=? AND status IN ('active','submitted')",
+                (current_user["username"], exam_id)
+            )
+            await db.commit()
 
         # Fetch questions scoped strictly to this exam, in defined order
         cur = await db.execute(
@@ -1892,7 +1999,36 @@ async def submit_exam(data: ExamSubmit, current_user=Depends(get_current_user)):
             raise HTTPException(status_code=404, detail="Session not found")
         session = dict(srow)
         if session["status"] == "submitted":
-            raise HTTPException(status_code=400, detail="Already submitted")
+            # Session already submitted — return stored result
+            qids = json.loads(session["question_ids"] or "[]")
+            placeholders = ",".join("?" * len(qids))
+            cur_q = await db.execute(
+                f"""SELECT id, question_text, option_a, option_b, option_c, option_d,
+                    correct_answer, marks FROM questions WHERE id IN ({placeholders})""", qids
+            )
+            stored_qs = await cur_q.fetchall()
+            stored_answers = json.loads(session.get("answers") or "{}")
+            total_marks = sum((q["marks"] or 1) for q in stored_qs)
+            marks_score = sum(
+                (q["marks"] or 1) for q in stored_qs
+                if stored_answers.get(str(q["id"]), "").upper().strip() == (q["correct_answer"] or "").upper().strip()
+            )
+            exam_row2 = None
+            if session.get("exam_id"):
+                cur_e = await db.execute("SELECT passing_score FROM exams WHERE id=?", (session["exam_id"],))
+                exam_row2 = await cur_e.fetchone()
+            passing_score2 = dict(exam_row2)["passing_score"] if exam_row2 else 60
+            pct2 = round(marks_score / max(total_marks, 1) * 100)
+            return {
+                "score": session["score"] or marks_score,
+                "total": total_marks,
+                "percentage": pct2,
+                "passingScore": passing_score2,
+                "passed": pct2 >= passing_score2,
+                "status": "submitted",
+                "questions": [{"questionId": q["id"], "questionText": q["question_text"], "optionA": q["option_a"], "optionB": q["option_b"], "optionC": q["option_c"], "optionD": q["option_d"], "correctAnswer": q["correct_answer"], "marks": q["marks"]} for q in stored_qs],
+                "answers": stored_answers,
+            }
         qids = json.loads(session["question_ids"] or "[]")
         placeholders = ",".join("?" * len(qids))
         cur2 = await db.execute(
@@ -1901,19 +2037,63 @@ async def submit_exam(data: ExamSubmit, current_user=Depends(get_current_user)):
         questions = await cur2.fetchall()
         score = sum(
             1 for q in questions
-            if data.answers.get(str(q["id"]), "").upper() == q["correct_answer"]
+            if data.answers.get(str(q["id"]), "").upper().strip() == (q["correct_answer"] or "").upper().strip()
         )
+        # Calculate marks-weighted score
+        cur3 = await db.execute(
+            f"SELECT id, correct_answer, marks FROM questions WHERE id IN ({placeholders})", qids
+        )
+        questions_with_marks = await cur3.fetchall()
+        marks_score = sum(
+            (q["marks"] or 1) for q in questions_with_marks
+            if data.answers.get(str(q["id"]), "").upper().strip() == (q["correct_answer"] or "").upper().strip()
+        )
+        total_marks = sum((q["marks"] or 1) for q in questions_with_marks)
+
+        # Get exam passing score
+        exam_row = None
+        if session.get("exam_id"):
+            cur4 = await db.execute("SELECT passing_score FROM exams WHERE id=?", (session["exam_id"],))
+            exam_row = await cur4.fetchone()
+        passing_score = dict(exam_row)["passing_score"] if exam_row else 60
+
+        # Use actual sum of question marks as total (not exam config total_marks)
+        percentage = round(marks_score / max(total_marks, 1) * 100)
         await db.execute(
             """UPDATE exam_sessions SET answers=?,score=?,status='submitted',
                submitted_at=datetime('now') WHERE id=?""",
-            (json.dumps(data.answers), score, data.session_id)
+            (json.dumps(data.answers), marks_score, data.session_id)
         )
         await db.commit()
+
+        # Fetch full questions with correct answers for result screen
+        cur5 = await db.execute(
+            f"""SELECT id, question_text, option_a, option_b, option_c, option_d,
+                correct_answer, marks FROM questions WHERE id IN ({placeholders})""", qids
+        )
+        result_questions = await cur5.fetchall()
+
     return {
-        "score": score,
-        "total": session["total_questions"],
-        "percentage": round(score / max(session["total_questions"], 1) * 100),
-        "status": "submitted",
+        "score":        marks_score,
+        "total":        total_marks,
+        "percentage":   percentage,
+        "passingScore": passing_score,
+        "passed":       percentage >= passing_score,
+        "status":       "submitted",
+        "questions": [
+            {
+                "questionId":    q["id"],
+                "questionText":  q["question_text"],
+                "optionA":       q["option_a"],
+                "optionB":       q["option_b"],
+                "optionC":       q["option_c"],
+                "optionD":       q["option_d"],
+                "correctAnswer": q["correct_answer"],
+                "marks":         q["marks"],
+            }
+            for q in result_questions
+        ],
+        "answers": data.answers,
     }
 
 @app.get("/exam/results")
@@ -1942,11 +2122,37 @@ async def get_my_result(current_user=Depends(get_current_user)):
     return dict(row)
 
 # ── Sessions REST endpoints (frontend /api/sessions/…) ────────────
+@app.get("/api/sessions/{session_id}/heartbeat")
+@app.post("/api/sessions/{session_id}/heartbeat")
+async def session_heartbeat(session_id: int, payload: dict = None,
+                            current_user=Depends(get_current_user)):
+    """Keep session alive — update status and record last-seen timestamp."""
+    new_status = (payload or {}).get("status", "active")
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cur = await db.execute("SELECT id, status FROM exam_sessions WHERE id=?", (session_id,))
+        row = await cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Session not found")
+        if dict(row)["status"] == "submitted":
+            return {"sessionId": session_id, "status": "submitted", "message": "Already submitted"}
+        await db.execute(
+            "UPDATE exam_sessions SET status=? WHERE id=?",
+            (new_status, session_id)
+        )
+        await db.commit()
+    return {
+        "sessionId": session_id,
+        "status":    new_status,
+        "timestamp": datetime.utcnow().isoformat(),
+    }
+
 @app.get("/api/sessions")
 async def get_sessions(current_user=Depends(get_current_user)):
     """Return submitted sessions — admins/teachers see all, students see own."""
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
+
         if current_user["role"] in ("admin", "administrator", "teacher"):
             cur = await db.execute(
                 "SELECT * FROM exam_sessions WHERE status='submitted' ORDER BY submitted_at DESC"
@@ -2161,11 +2367,23 @@ async def delete_exam(exam_id: int, current_user=Depends(get_current_user)):
     if current_user["role"] not in ("admin", "teacher"):
         raise HTTPException(status_code=403, detail="Admin or Teacher only")
     async with aiosqlite.connect(DB_PATH) as db:
-        # Cascade-delete questions belonging to this exam
+        # Check exam exists
+        cur = await db.execute("SELECT id, title FROM exams WHERE id=?", (exam_id,))
+        row = await cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Exam not found")
+        exam_title = row[1]
+        # Cascade-delete all related records
         await db.execute("DELETE FROM questions WHERE exam_id=?", (exam_id,))
+        await db.execute("DELETE FROM exam_sessions WHERE exam_id=?", (exam_id,))
+        # exam_questions may not exist — ignore error
+        try:
+            await db.execute("DELETE FROM exam_questions WHERE exam_id=?", (exam_id,))
+        except Exception:
+            pass
         await db.execute("DELETE FROM exams WHERE id=?", (exam_id,))
         await db.commit()
-    return {"message": "Exam deleted"}
+    return {"message": f"Exam '{exam_title}' (id={exam_id}) deleted successfully", "examId": exam_id}
 
 @app.get("/settings")
 @app.get("/api/settings")
@@ -2182,11 +2400,11 @@ async def get_setting_by_key(key: str, current_user=Depends(get_current_user)):
         db.row_factory = aiosqlite.Row
         cur = await db.execute("SELECT value FROM settings WHERE key=?", (key,))
         row = await cur.fetchone()
-    return {key: row["value"] if row else None}
+    return {"key": key, "value": row["value"] if row else None}
 
 @app.post("/settings")
 @app.post("/api/settings")
-async def update_settings(payload: dict, current_user=Depends(get_current_user)):
+async def update_settings_bulk(payload: dict, current_user=Depends(get_current_user)):
     if current_user["role"] not in ("admin", "administrator"):
         raise HTTPException(status_code=403, detail="Admin only")
     async with aiosqlite.connect(DB_PATH) as db:
@@ -2196,30 +2414,74 @@ async def update_settings(payload: dict, current_user=Depends(get_current_user))
                 (str(k), str(v))
             )
         await db.commit()
-    return {"message": "Settings updated"}
+    return {"message": "Settings updated", "updated": list(payload.keys())}
+
+@app.put("/api/settings/{key}")
+async def update_setting_by_key(key: str, payload: dict,
+                                current_user=Depends(get_current_user)):
+    """Update a single setting by key. Payload: {value, description (optional)}."""
+    if current_user["role"] not in ("admin", "administrator"):
+        raise HTTPException(status_code=403, detail="Admin only")
+    value = payload.get("value")
+    if value is None:
+        raise HTTPException(status_code=400, detail="'value' is required")
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
+            (key, str(value))
+        )
+        await db.commit()
+    return {
+        "key":         key,
+        "value":       str(value),
+        "description": payload.get("description", ""),
+        "updatedAt":   datetime.utcnow().isoformat(),
+    }
 
 # ── Identity verification + certificates (stub endpoints) ─────────
 @app.post("/api/identity-verification")
 async def identity_verification(payload: dict = None,
                                 current_user=Depends(get_current_user)):
-    """Accept identity verification submission — stores flag, returns success."""
+    """Accept identity verification submission."""
+    p = payload or {}
+    session_id          = p.get("sessionId")
+    student_id          = p.get("studentId")
+    verification_status = p.get("verificationStatus", "verified")
+    notes               = p.get("notes", "")
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
             "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
-            (f"id_verified_{current_user['username']}", "true")
+            (f"id_verified_{current_user['username']}", verification_status)
         )
         await db.commit()
-    return {"verified": True, "username": current_user["username"]}
+    return {
+        "verified":           verification_status == "verified",
+        "verificationStatus": verification_status,
+        "username":           current_user["username"],
+        "sessionId":          session_id,
+        "studentId":          student_id,
+        "notes":              notes,
+        "verifiedAt":         datetime.utcnow().isoformat(),
+    }
 
 @app.post("/api/certificates/issue")
 async def issue_certificate(payload: dict = None,
                             current_user=Depends(get_current_user)):
-    """Issue a certificate stub — returns certificate metadata."""
+    """Issue a certificate for a student exam session."""
+    p = payload or {}
+    student_id = p.get("studentId")
+    exam_id    = p.get("examId")
+    session_id = p.get("sessionId")
+    cert_num   = f"CERT-{current_user['username'].upper()}-{exam_id or 0}-{datetime.utcnow().strftime('%Y%m%d%H%M')}"
     return {
-        "issued":      True,
-        "username":    current_user["username"],
-        "issuedAt":    datetime.utcnow().isoformat(),
-        "certificate": f"CERT-{current_user['username'].upper()}-{datetime.utcnow().strftime('%Y%m%d')}",
+        "issued":            True,
+        "certificateNumber": cert_num,
+        "username":          current_user["username"],
+        "studentId":         student_id,
+        "examId":            exam_id,
+        "sessionId":         session_id,
+        "issuedAt":          datetime.utcnow().isoformat(),
+        "issuedBy":          current_user["username"],
     }
 
 @app.get("/analytics/summary")

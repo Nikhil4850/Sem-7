@@ -50,9 +50,9 @@ export default function AuthModal({ isOpen, initialRole, onClose, onLoginSuccess
       }
 
       onLoginSuccess({
-        token: data.token || data.access_token,
-        role: data.role,
-        username: data.username || username
+        token: data.Token || data.token || data.access_token,
+        role: (data.Role || data.role || '').toLowerCase(),
+        username: data.Username || data.username || username
       });
       onClose();
     } catch {
