@@ -184,13 +184,6 @@ Browser opens at `http://localhost:3000`
 
 ---
 
-## 👨‍💻 Author
-
-**Shrinet Singh**
-Built as a portfolio project demonstrating full-stack AI engineering.
-
-🔗 GitHub: [Shrinetsingh9648](https://github.com/Shrinetsingh9648)
-
 ---
 
 ## 📄 License
