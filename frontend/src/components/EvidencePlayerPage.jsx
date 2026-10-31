@@ -17,20 +17,56 @@ export default function EvidencePlayerPage({ onNavigate }) {
   const token = localStorage.getItem('token');
 
   useEffect(() => {
-    fetch(`${BASE_URL}/api/proctoring/logs`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then(r => r.json())
-      .then(data => { setLogs(Array.isArray(data) ? data : []); setLoading(false); })
-      .catch(() => setLoading(false));
+    // Fetch active sessions first, then get logs only for those sessions
+    const fetchLogs = async () => {
+      try {
+        const sessRes = await fetch(`${BASE_URL}/api/admin/sessions`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const allSessions = sessRes.ok ? await sessRes.json() : [];
+        // Only get session IDs that are currently active
+        const activeSessions = Array.isArray(allSessions)
+          ? allSessions.filter(s => (s.Status || s.status || '').toLowerCase() === 'active')
+          : [];
+        const activeIds = new Set(activeSessions.map(s => s.SessionId || s.sessionId));
+
+        const logRes = await fetch(`${BASE_URL}/api/proctoring/logs`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const allLogs = logRes.ok ? await logRes.json() : [];
+        // Filter logs to only those belonging to active sessions
+        // If no active sessions, show empty; if logs have no sessionId, show none
+        const liveLogs = Array.isArray(allLogs)
+          ? (activeIds.size > 0
+              ? allLogs.filter(l => activeIds.has(l.sessionId || l.SessionId))
+              : [])
+          : [];
+        setLogs(liveLogs);
+      } catch {}
+      setLoading(false);
+    };
+    fetchLogs();
   }, [token]);
 
-  const students   = [...new Set(logs.map(l => l.user_id).filter(Boolean))];
-  const eventTypes = [...new Set(logs.map(l => l.event).filter(Boolean))];
+  // Normalise PascalCase from .NET
+  const normLog = l => ({
+    id:            l.LogId       || l.id,
+    sessionId:     l.SessionId   || l.sessionId,
+    userId:        l.UserId      || l.userId,
+    event:         l.EventType   || l.event       || l.eventType || 'unknown',
+    details:       l.EventDetails|| l.eventDetails|| '',
+    timestamp:     l.Timestamp   || l.timestamp,
+    score:         l.SuspicionScore ?? l.suspicion_score ?? 0,
+    username:      l.Username    || l.user_id     || `User #${l.UserId || l.userId || '?'}`,
+  });
 
-  const filtered = logs.filter(l => {
-    const matchE = filterEvent   === 'ALL' || l.event   === filterEvent;
-    const matchS = filterStudent === 'ALL' || l.user_id === filterStudent;
+  const normLogs   = logs.map(normLog);
+  const students   = [...new Set(normLogs.map(l => l.username).filter(Boolean))];
+  const eventTypes = [...new Set(normLogs.map(l => l.event).filter(Boolean))];
+
+  const filtered = normLogs.filter(l => {
+    const matchE = filterEvent   === 'ALL' || l.event    === filterEvent;
+    const matchS = filterStudent === 'ALL' || l.username === filterStudent;
     return matchE && matchS;
   });
 
@@ -50,7 +86,7 @@ export default function EvidencePlayerPage({ onNavigate }) {
           <span className="badge badge-warning" style={{ marginBottom:'6px' }}>Invigilator Evidence Player</span>
           <h2 style={{ fontSize:'1.6rem', fontWeight:800, color:'#0f172a' }}>Proctoring Violation Log Viewer</h2>
           <p style={{ color:'#64748b', fontSize:'0.85rem', marginTop:'4px' }}>
-            {loading ? 'Loading...' : `${logs.length} total events · ${filtered.length} shown`}
+            {loading ? 'Loading…' : logs.length === 0 ? 'No active exam violations' : `${logs.length} live events · ${filtered.length} shown`}
           </p>
         </div>
         <button className="btn btn-secondary" onClick={() => onNavigate('dashboard')}>← Back</button>
@@ -68,9 +104,9 @@ export default function EvidencePlayerPage({ onNavigate }) {
         </div>
       ) : logs.length === 0 ? (
         <div style={{ textAlign:'center', padding:'60px', background:'#fff', borderRadius:'16px', border:'1px solid #e8edf2', color:'#64748b' }}>
-          <div style={{ fontSize:'3rem', marginBottom:'14px' }}>📭</div>
-          <div style={{ fontWeight:700, color:'#0f172a', marginBottom:'6px' }}>No violations recorded yet</div>
-          <div style={{ fontSize:'0.85rem' }}>Violation events will appear here after students complete proctored exams.</div>
+          <div style={{ fontSize:'3rem', marginBottom:'14px' }}>🟢</div>
+          <div style={{ fontWeight:700, color:'#0f172a', marginBottom:'6px' }}>No Live Violations</div>
+          <div style={{ fontSize:'0.85rem' }}>Violation events will appear here in real-time while students are actively taking exams.</div>
         </div>
       ) : (
         <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr', gap:'24px' }}>
@@ -85,8 +121,8 @@ export default function EvidencePlayerPage({ onNavigate }) {
                   {students.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
                 <select className="form-select" style={{ flex:1 }} value={filterEvent} onChange={e => { setFilterEvent(e.target.value); setCurrentIndex(0); }}>
-                  <option value="ALL">All Events ({logs.length})</option>
-                  {eventTypes.map(e => <option key={e} value={e}>{V_LABELS[e]||e} ({logs.filter(l=>l.event===e).length})</option>)}
+                  <option value="ALL">All Events ({normLogs.length})</option>
+                  {eventTypes.map(e => <option key={e} value={e}>{V_LABELS[e]||e} ({normLogs.filter(l=>l.event===e).length})</option>)}
                 </select>
               </div>
 
@@ -94,25 +130,20 @@ export default function EvidencePlayerPage({ onNavigate }) {
                 <>
                   <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'16px' }}>
                     <div>
-                      <strong style={{ fontSize:'1rem', color:'#0f172a' }}>Student: {active.user_id}</strong>
+                      <strong style={{ fontSize:'1rem', color:'#0f172a' }}>Student: {active.username}</strong>
                       <span style={{ marginLeft:'12px', fontSize:'0.82rem', color:'#94a3b8' }}>Event #{active.id}</span>
                     </div>
-                    <span style={{
-                      fontSize:'0.78rem', fontWeight:700, padding:'4px 12px', borderRadius:'20px',
-                      background:`${V_COLORS[active.event]||'#94a3b8'}18`,
-                      color: V_COLORS[active.event]||'#64748b',
-                      border:`1px solid ${V_COLORS[active.event]||'#e2e8f0'}44`,
-                    }}>
+                    <span style={{ fontSize:'0.78rem', fontWeight:700, padding:'4px 12px', borderRadius:'20px', background:`${V_COLORS[active.event]||'#94a3b8'}18`, color:V_COLORS[active.event]||'#64748b', border:`1px solid ${V_COLORS[active.event]||'#e2e8f0'}44` }}>
                       {V_ICONS[active.event]||'⚠️'} {V_LABELS[active.event]||active.event}
                     </span>
                   </div>
 
-                  {/* Simulated frame */}
+                  {/* Event display */}
                   <div style={{ height:'320px', background:'#0f172a', borderRadius:'12px', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:'20px', border:`1.5px solid ${V_COLORS[active.event]||'#334155'}`, position:'relative' }}>
                     <div style={{ textAlign:'center', color:'#94a3b8' }}>
                       <div style={{ fontSize:'3rem', marginBottom:'10px' }}>{V_ICONS[active.event]||'⚠️'}</div>
                       <div style={{ fontSize:'0.88rem', fontWeight:600, color:'#fff', marginBottom:'6px' }}>{V_LABELS[active.event]||active.event}</div>
-                      <div style={{ fontSize:'0.75rem' }}>Suspicion Score: <strong style={{ color: active.suspicion_score>60?'#ef4444':'#f59e0b' }}>{active.suspicion_score}</strong></div>
+                      {active.details && <div style={{ fontSize:'0.75rem', color:'#64748b', marginBottom:'4px' }}>{active.details}</div>}
                       <div style={{ fontSize:'0.72rem', marginTop:'4px', color:'#64748b' }}>{active.timestamp ? new Date(active.timestamp).toLocaleString() : '—'}</div>
                     </div>
                   </div>
@@ -146,17 +177,12 @@ export default function EvidencePlayerPage({ onNavigate }) {
               </h4>
               <div style={{ display:'flex', flexDirection:'column', gap:'8px', maxHeight:'320px', overflowY:'auto' }}>
                 {filtered.map((log, idx) => (
-                  <div key={log.id||idx} onClick={() => setCurrentIndex(idx)} style={{
-                    padding:'10px 12px', borderRadius:'8px', cursor:'pointer',
-                    border: currentIndex===idx ? '1.5px solid #0066ff' : '1px solid #e2e8f0',
-                    background: currentIndex===idx ? '#eff6ff' : '#f8fafc',
-                    display:'flex', justifyContent:'space-between', alignItems:'center',
-                  }}>
+                  <div key={log.id||idx} onClick={() => setCurrentIndex(idx)} style={{ padding:'10px 12px', borderRadius:'8px', cursor:'pointer', border: currentIndex===idx ? '1.5px solid #0066ff' : '1px solid #e2e8f0', background: currentIndex===idx ? '#eff6ff' : '#f8fafc', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                     <div>
                       <div style={{ fontSize:'0.82rem', fontWeight:700, color:'#0f172a' }}>
                         {V_ICONS[log.event]||'⚠️'} {V_LABELS[log.event]||log.event}
                       </div>
-                      <div style={{ fontSize:'0.7rem', color:'#64748b' }}>{log.user_id} · Score: {log.suspicion_score}</div>
+                      <div style={{ fontSize:'0.7rem', color:'#64748b' }}>{log.username}</div>
                     </div>
                     <span style={{ fontSize:'0.68rem', color:'#94a3b8', whiteSpace:'nowrap' }}>
                       {log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : '—'}
